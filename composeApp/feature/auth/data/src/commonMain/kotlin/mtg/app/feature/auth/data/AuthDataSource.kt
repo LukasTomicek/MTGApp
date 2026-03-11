@@ -1,0 +1,14 @@
+package mtg.app.feature.auth.data
+
+import mtg.app.feature.auth.domain.AuthUser
+
+interface AuthDataSource {
+    suspend fun restoreCurrentUser(): AuthUser?
+    suspend fun signIn(email: String, password: String): AuthUser
+    suspend fun signUp(email: String, password: String): AuthUser
+    suspend fun signInWithGoogleIdToken(idToken: String): AuthUser
+    suspend fun sendPasswordReset(email: String)
+    suspend fun changePassword(newPassword: String, idToken: String)
+    suspend fun deleteAccount(idToken: String)
+    suspend fun signOut()
+}

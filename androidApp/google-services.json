@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "556672052935",
+    "firebase_url": "https://mtglocaltrade-default-rtdb.firebaseio.com",
+    "project_id": "mtglocaltrade",
+    "storage_bucket": "mtglocaltrade.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:556672052935:android:2104108134083dfce5d8e2",
+        "android_client_info": {
+          "package_name": "mtg.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "556672052935-gbie21pfobr10spvltfppjh78kqc3dl9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "mtg.app",
+            "certificate_hash": "435555220df0d1e341de9be08555f5e3792114da"
+          }
+        },
+        {
+          "client_id": "556672052935-hl8bgjs1lf87v87sagdn7p77qv4ffc91.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKo0nMPhdHTGwpzMotJQnT4mg_1oXAkJc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "556672052935-hl8bgjs1lf87v87sagdn7p77qv4ffc91.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
