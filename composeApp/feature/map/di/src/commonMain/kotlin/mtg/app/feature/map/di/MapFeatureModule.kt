@@ -6,9 +6,8 @@ import org.koin.dsl.module
 val mapFeatureModule = module {
     factory {
         MapViewModel(
-            observeAuthState = get(),
-            loadMapPins = get(),
-            replaceMapPins = get(),
+            authService = get(),
+            tradeService = get(),
         )
     }
 }

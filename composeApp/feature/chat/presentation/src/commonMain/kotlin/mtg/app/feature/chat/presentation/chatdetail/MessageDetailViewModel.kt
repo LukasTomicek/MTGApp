@@ -1,30 +1,19 @@
 package mtg.app.feature.chat.presentation.chatdetail
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.chat.domain.ConfirmDealUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.chat.domain.ChatService
 import mtg.app.feature.chat.domain.DealStatus
-import mtg.app.feature.chat.domain.HasRatedChatUseCase
-import mtg.app.feature.chat.domain.LoadChatMessagesUseCase
-import mtg.app.feature.chat.domain.LoadChatMetaUseCase
-import mtg.app.feature.chat.domain.LoadUserRatingSummaryUseCase
-import mtg.app.feature.chat.domain.ProposeDealUseCase
-import mtg.app.feature.chat.domain.SendChatMessageUseCase
-import mtg.app.feature.chat.domain.SubmitUserRatingUseCase
+import mtg.app.core.domain.obj.AuthContext
+import mtg.app.feature.chat.domain.obj.SendChatMessageRequest
+import mtg.app.feature.chat.domain.obj.SubmitChatRatingRequest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 
 class MessageDetailViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadChatMeta: LoadChatMetaUseCase,
-    private val loadChatMessages: LoadChatMessagesUseCase,
-    private val sendChatMessage: SendChatMessageUseCase,
-    private val proposeDealUseCase: ProposeDealUseCase,
-    private val confirmDealUseCase: ConfirmDealUseCase,
-    private val loadUserRatingSummary: LoadUserRatingSummaryUseCase,
-    private val hasRatedChat: HasRatedChatUseCase,
-    private val submitUserRating: SubmitUserRatingUseCase,
+    private val authService: AuthDomainService,
+    private val chatService: ChatService,
 ) : BaseViewModel<MessageDetailScreenState, MessageDetailUiEvent, MessageDetailDirection>(
     initialState = MessageDetailScreenState(),
 ) {
@@ -35,7 +24,7 @@ class MessageDetailViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 updateState { it.copy(currentUserUid = user?.uid.orEmpty()) }
@@ -90,21 +79,33 @@ class MessageDetailViewModel(
             setLoading(true)
             setError(null)
             runCatching {
-                val meta = loadChatMeta(chatId = chatId, idToken = idToken)
-                val messages = loadChatMessages(chatId = chatId, idToken = idToken)
+                val authContext = AuthContext(uid = currentUser.orEmpty(), idToken = idToken)
+                val meta = chatService.loadChatMeta(context = authContext, chatId = chatId)
+                val messages = chatService.loadChatMessages(
+                    context = authContext,
+                    chatId = chatId,
+                )
                 val counterpartUid = when (currentUser) {
                     meta?.buyerUid -> meta?.sellerUid.orEmpty()
                     meta?.sellerUid -> meta?.buyerUid.orEmpty()
                     else -> ""
                 }
                 val summary = if (counterpartUid.isNotBlank()) {
-                    runCatching { loadUserRatingSummary(uid = counterpartUid, idToken = idToken) }.getOrNull()
+                    runCatching {
+                        chatService.loadUserRatingSummary(
+                            context = authContext,
+                            uid = counterpartUid,
+                        )
+                    }.getOrNull()
                 } else {
                     null
                 }
                 val alreadyRated = if (!currentUser.isNullOrBlank()) {
                     runCatching {
-                        hasRatedChat(uid = currentUser, idToken = idToken, chatId = chatId)
+                        chatService.hasRatedChat(
+                            context = authContext,
+                            chatId = chatId,
+                        )
                     }.getOrDefault(false)
                 } else {
                     false
@@ -176,12 +177,9 @@ class MessageDetailViewModel(
                 )
             }
             runCatching {
-                sendChatMessage(
-                    uid = uid,
-                    idToken = idToken,
-                    chatId = chatId,
-                    senderEmail = senderEmail,
-                    text = text,
+                chatService.sendMessage(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    request = SendChatMessageRequest(chatId = chatId, senderEmail = senderEmail, text = text),
                 )
             }.onSuccess {
                 setError(null)
@@ -201,7 +199,10 @@ class MessageDetailViewModel(
 
         launch {
             runCatching {
-                proposeDealUseCase(uid = uid, idToken = idToken, chatId = chatId)
+                chatService.proposeDeal(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    chatId = chatId,
+                )
             }.onSuccess {
                 reload()
             }.onFailure {
@@ -218,7 +219,10 @@ class MessageDetailViewModel(
 
         launch {
             runCatching {
-                confirmDealUseCase(uid = uid, idToken = idToken, chatId = chatId)
+                chatService.confirmDeal(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    chatId = chatId,
+                )
             }.onSuccess {
                 reload()
             }.onFailure {
@@ -243,13 +247,14 @@ class MessageDetailViewModel(
 
         launch {
             runCatching {
-                submitUserRating(
-                    raterUid = raterUid,
-                    ratedUid = current.counterpartUid,
-                    chatId = current.chatId,
-                    idToken = idToken,
-                    score = current.ratingScoreDraft,
-                    comment = current.ratingCommentDraft.trim(),
+                chatService.submitRating(
+                    context = AuthContext(uid = raterUid, idToken = idToken),
+                    request = SubmitChatRatingRequest(
+                        ratedUid = current.counterpartUid,
+                        chatId = current.chatId,
+                        score = current.ratingScoreDraft,
+                        comment = current.ratingCommentDraft.trim(),
+                    ),
                 )
             }.onSuccess {
                 updateState {

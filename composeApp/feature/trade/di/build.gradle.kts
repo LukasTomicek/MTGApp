@@ -21,6 +21,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.composeApp.core.data)
             implementation(projects.composeApp.core.domain)
             implementation(projects.composeApp.core.presentation)
             implementation(projects.composeApp.feature.auth.domain)

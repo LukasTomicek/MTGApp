@@ -26,6 +26,7 @@ include(":composeApp")
 includeCoreModules(
     listOf(
         ModuleSuffix.Domain,
+        ModuleSuffix.Data,
         ModuleSuffix.Presentation,
         ModuleSuffix.DI,
     )

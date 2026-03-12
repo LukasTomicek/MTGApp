@@ -1,20 +1,15 @@
 package mtg.app.feature.chat.presentation.publicprofile
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.chat.domain.LoadUserNicknameUseCase
-import mtg.app.feature.chat.domain.LoadUserReviewsUseCase
-import mtg.app.feature.chat.domain.LoadUserRatingSummaryUseCase
-import mtg.app.feature.chat.domain.LoadUserSellOffersUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.chat.domain.ChatService
 import mtg.app.feature.chat.domain.UserRatingSummary
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class PublicProfileViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadUserNickname: LoadUserNicknameUseCase,
-    private val loadUserRatingSummary: LoadUserRatingSummaryUseCase,
-    private val loadUserReviews: LoadUserReviewsUseCase,
-    private val loadUserSellOffers: LoadUserSellOffersUseCase,
+    private val authService: AuthDomainService,
+    private val chatService: ChatService,
 ) : BaseViewModel<PublicProfileScreenState, PublicProfileUiEvent, PublicProfileDirection>(
     initialState = PublicProfileScreenState(),
 ) {
@@ -22,7 +17,7 @@ class PublicProfileViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentIdToken = user?.idToken
                 val targetUid = state.value.data.targetUid
                 if (!targetUid.isBlank() && !currentIdToken.isNullOrBlank()) {
@@ -58,11 +53,12 @@ class PublicProfileViewModel(
         launch {
             setLoading(true)
             setError(null)
+            val context = AuthContext(uid = "", idToken = idToken)
 
             var hasError = false
 
             val nickname = runCatching {
-                loadUserNickname(uid = targetUid, idToken = idToken)
+                chatService.loadUserNickname(uid = targetUid)
                     ?.trim()
                     .orEmpty()
             }.getOrElse {
@@ -71,21 +67,21 @@ class PublicProfileViewModel(
             }.ifBlank { targetUid }
 
             val summary = runCatching {
-                loadUserRatingSummary(uid = targetUid, idToken = idToken)
+                chatService.loadUserRatingSummary(context = context, uid = targetUid)
             }.getOrElse {
                 hasError = true
                 UserRatingSummary(average = 0.0, count = 0)
             }
 
             val reviews = runCatching {
-                loadUserReviews(uid = targetUid, idToken = idToken)
+                chatService.loadUserReviews(context = context, uid = targetUid)
             }.getOrElse {
                 hasError = true
                 emptyList()
             }
 
             val sellOffers = runCatching {
-                loadUserSellOffers(uid = targetUid, idToken = idToken)
+                chatService.loadUserSellOffers(context = context, uid = targetUid)
             }.getOrElse {
                 hasError = true
                 emptyList()

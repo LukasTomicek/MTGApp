@@ -2,9 +2,6 @@ package mtg.app.feature.trade.data
 
 import mtg.app.feature.trade.domain.StoredTradeCardEntry
 import mtg.app.feature.trade.domain.StoredMapPin
-import mtg.app.feature.trade.domain.TradeChatRoom
-import mtg.app.feature.trade.domain.TradeMatchNotification
-import mtg.app.feature.trade.domain.TradeUserMatch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -15,19 +12,6 @@ fun JsonObject.toStoredTradeEntries(): List<StoredTradeCardEntry> {
         val entryObject = element as? JsonObject ?: return@mapNotNull null
         entryObject.toStoredTradeEntry(fallbackEntryId = entryKey).takeIf { it.entryId.isNotBlank() }
     }
-}
-
-fun JsonObject.toStoredTradeEntriesByUserFromMarketplace(): Map<String, List<StoredTradeCardEntry>> {
-    val byUser = LinkedHashMap<String, List<StoredTradeCardEntry>>()
-    this.entries.forEach { (uid, userElement) ->
-        val userEntries = userElement as? JsonObject ?: return@forEach
-        val entries = userEntries.entries.mapNotNull { (entryKey, entryElement) ->
-            val entryObject = entryElement as? JsonObject ?: return@mapNotNull null
-            entryObject.toStoredTradeEntry(fallbackEntryId = entryKey).takeIf { it.entryId.isNotBlank() }
-        }
-        byUser[uid] = entries
-    }
-    return byUser
 }
 
 fun JsonObject.toStoredMapPins(): List<StoredMapPin> {
@@ -45,15 +29,6 @@ fun JsonObject.toStoredMapPins(): List<StoredMapPin> {
     }
 }
 
-fun JsonObject.toStoredMapPinsByUserFromMarketplace(): Map<String, List<StoredMapPin>> {
-    val byUser = LinkedHashMap<String, List<StoredMapPin>>()
-    entries.forEach { (uid, userElement) ->
-        val userPins = userElement as? JsonObject ?: return@forEach
-        byUser[uid] = userPins.toStoredMapPins()
-    }
-    return byUser
-}
-
 fun StoredTradeCardEntry.toRealtimeEntryJson(): JsonObject {
     return buildJsonObject {
         put("entryId", entryId)
@@ -69,52 +44,6 @@ fun StoredTradeCardEntry.toRealtimeEntryJson(): JsonObject {
         cardImageUrl?.let { put("cardImageUrl", it) }
         cardArtDescriptor?.let { put("cardArtDescriptor", it) }
         artImageUrl?.let { put("artImageUrl", it) }
-    }
-}
-
-fun TradeMatchNotification.toRealtimeNotificationJson(): JsonObject {
-    return buildJsonObject {
-        put("notificationId", notificationId)
-        put("chatId", chatId)
-        put("sellerUid", sellerUid)
-        put("sellerEmail", sellerEmail)
-        put("cardId", cardId)
-        put("cardName", cardName)
-        price?.let { put("price", it) }
-        message?.let { put("message", it) }
-        put("isRead", isRead)
-        put("type", type)
-        sellerImageUrl?.let { put("sellerImageUrl", it) }
-    }
-}
-
-fun TradeUserMatch.toRealtimeUserMatchJson(): JsonObject {
-    return buildJsonObject {
-        put("chatId", chatId)
-        put("counterpartUid", counterpartUid)
-        put("counterpartEmail", counterpartEmail)
-        put("cardId", cardId)
-        put("cardName", cardName)
-        put("role", role)
-        put("updatedAt", updatedAt)
-    }
-}
-
-fun TradeChatRoom.toRealtimeChatRoomJson(): JsonObject {
-    return buildJsonObject {
-        put("chatId", chatId)
-        put("buyerUid", buyerUid)
-        put("buyerEmail", buyerEmail)
-        put("sellerUid", sellerUid)
-        put("sellerEmail", sellerEmail)
-        put("cardId", cardId)
-        put("cardName", cardName)
-        put("createdAt", createdAt)
-        put("dealStatus", "OPEN")
-        put("buyerConfirmed", false)
-        put("sellerConfirmed", false)
-        put("buyerCompleted", false)
-        put("sellerCompleted", false)
     }
 }
 

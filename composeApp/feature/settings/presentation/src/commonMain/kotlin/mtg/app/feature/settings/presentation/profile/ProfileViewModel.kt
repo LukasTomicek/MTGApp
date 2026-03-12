@@ -1,19 +1,16 @@
 package mtg.app.feature.settings.presentation.profile
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ChangePasswordUseCase
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.chat.domain.LoadUserReviewsUseCase
-import mtg.app.feature.welcome.domain.LoadWelcomeNicknameUseCase
-import mtg.app.feature.welcome.domain.SaveWelcomeNicknameUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.chat.domain.ChatService
+import mtg.app.feature.welcome.domain.WelcomeService
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class ProfileViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadWelcomeNickname: LoadWelcomeNicknameUseCase,
-    private val saveWelcomeNickname: SaveWelcomeNicknameUseCase,
-    private val changePasswordUseCase: ChangePasswordUseCase,
-    private val loadUserReviews: LoadUserReviewsUseCase,
+    private val authService: AuthDomainService,
+    private val welcomeService: WelcomeService,
+    private val chatService: ChatService,
 ) : BaseViewModel<ProfileScreenState, ProfileUiEvent, ProfileDirection>(
     initialState = ProfileScreenState(),
 ) {
@@ -86,7 +83,7 @@ class ProfileViewModel(
 
     private fun observeUser() {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
 
@@ -105,7 +102,7 @@ class ProfileViewModel(
                 }
 
                 runCatching {
-                    loadWelcomeNickname(uid = user.uid, idToken = user.idToken)
+                    welcomeService.loadNickname(uid = user.uid)
                 }.onSuccess { nickname ->
                     updateState {
                         it.copy(
@@ -126,7 +123,10 @@ class ProfileViewModel(
                 }
 
                 runCatching {
-                    loadUserReviews(uid = user.uid, idToken = user.idToken)
+                    chatService.loadUserReviews(
+                        context = AuthContext(uid = user.uid, idToken = user.idToken),
+                        uid = user.uid,
+                    )
                 }.onSuccess { reviews ->
                     updateState {
                         it.copy(
@@ -173,7 +173,10 @@ class ProfileViewModel(
             updateState { it.copy(nicknameError = null, infoMessage = "") }
 
             runCatching {
-                saveWelcomeNickname(uid = uid, idToken = idToken, nickname = nickname)
+                welcomeService.saveNickname(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    nickname = nickname,
+                )
             }.onSuccess {
                 updateState {
                     it.copy(
@@ -231,7 +234,7 @@ class ProfileViewModel(
             updateState { it.copy(passwordError = null, infoMessage = "") }
 
             runCatching {
-                changePasswordUseCase(
+                authService.changePassword(
                     currentPassword = currentPassword,
                     newPassword = newPassword,
                 )

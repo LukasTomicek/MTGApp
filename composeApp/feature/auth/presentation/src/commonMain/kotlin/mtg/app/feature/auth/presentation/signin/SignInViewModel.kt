@@ -1,21 +1,17 @@
 package mtg.app.feature.auth.presentation.signin
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.auth.domain.SignInUseCase
-import mtg.app.feature.auth.domain.SignInWithGoogleUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import kotlinx.coroutines.flow.collectLatest
 
 class SignInViewModel(
-    private val signIn: SignInUseCase,
-    private val signInWithGoogle: SignInWithGoogleUseCase,
-    observeAuthState: ObserveAuthStateUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<SignInScreenState, SignInUiEvent, SignInDirection>(
     initialState = SignInScreenState(),
 ) {
     init {
         launch {
-            observeAuthState().collectLatest { user ->
+            authService.currentUser.collectLatest { user ->
                 if (user != null) {
                     navigate(SignInDirection.NavigateToHome)
                 }
@@ -49,7 +45,7 @@ class SignInViewModel(
                     return@launch
                 }
 
-                signIn(email = email, password = password)
+                authService.signIn(email = email, password = password)
                 updateState { it.copy(infoMessage = "Signed in") }
             } catch (e: Throwable) {
                 setError(e.message ?: "Sign in failed")
@@ -69,7 +65,7 @@ class SignInViewModel(
                     setError("Missing Google token")
                     return@launch
                 }
-                signInWithGoogle(idToken = normalizedToken)
+                authService.signInWithGoogleIdToken(idToken = normalizedToken)
                 updateState { it.copy(infoMessage = "Signed in with Google") }
             } catch (e: Throwable) {
                 setError(e.message ?: "Google sign in failed")

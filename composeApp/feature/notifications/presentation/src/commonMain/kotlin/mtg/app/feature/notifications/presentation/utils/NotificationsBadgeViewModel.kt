@@ -1,12 +1,13 @@
 package mtg.app.feature.notifications.presentation
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.notifications.domain.HasUnreadNotificationsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.notifications.domain.NotificationsService
+import mtg.app.core.domain.obj.AuthContext
 
 class NotificationsBadgeViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val hasUnreadNotifications: HasUnreadNotificationsUseCase,
+    private val authService: AuthDomainService,
+    private val notificationsService: NotificationsService,
 ) : BaseViewModel<NotificationsBadgeScreenState, NotificationsBadgeUiEvent, NotificationsDirection>(
     initialState = NotificationsBadgeScreenState(),
 ) {
@@ -15,7 +16,7 @@ class NotificationsBadgeViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 if (user == null) {
@@ -39,7 +40,9 @@ class NotificationsBadgeViewModel(
 
         launch {
             runCatching {
-                hasUnreadNotifications(uid = uid, idToken = idToken)
+                notificationsService.hasUnreadNotifications(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                )
             }.onSuccess { hasUnread ->
                 updateState { it.copy(hasUnread = hasUnread) }
             }

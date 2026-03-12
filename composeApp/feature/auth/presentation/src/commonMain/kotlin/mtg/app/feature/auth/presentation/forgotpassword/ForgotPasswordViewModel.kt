@@ -1,10 +1,10 @@
 package mtg.app.feature.auth.presentation.forgotpassword
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.SendPasswordResetUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 
 class ForgotPasswordViewModel(
-    private val sendPasswordReset: SendPasswordResetUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<ForgotPasswordScreenState, ForgotPasswordUiEvent, ForgotPasswordDirection>(
     initialState = ForgotPasswordScreenState(),
 ) {
@@ -29,7 +29,7 @@ class ForgotPasswordViewModel(
                     return@launch
                 }
 
-                sendPasswordReset(email = email)
+                authService.sendPasswordReset(email = email)
                 updateState { it.copy(infoMessage = "Reset link sent to email") }
             } catch (e: Throwable) {
                 setError(e.message ?: "Password reset failed")

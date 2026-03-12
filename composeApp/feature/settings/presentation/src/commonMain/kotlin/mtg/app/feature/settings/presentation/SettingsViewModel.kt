@@ -1,14 +1,10 @@
 package mtg.app.feature.settings.presentation
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.DeleteAccountUseCase
-import mtg.app.feature.auth.domain.SignOutUseCase
-import mtg.app.feature.settings.domain.GetSettingsMessageUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 
 class SettingsViewModel(
-    private val getMessage: GetSettingsMessageUseCase,
-    private val signOut: SignOutUseCase,
-    private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<SettingsScreenState, SettingsUiEvent, SettingsDirection>(
     initialState = SettingsScreenState(),
 ) {
@@ -34,7 +30,7 @@ class SettingsViewModel(
             setError(null)
 
             try {
-                signOut()
+                authService.signOut()
                 updateState { it.copy(actionMessage = "Logged out") }
                 navigate(SettingsDirection.NavigateToAuth)
             } catch (e: Throwable) {
@@ -51,7 +47,7 @@ class SettingsViewModel(
             setError(null)
 
             try {
-                deleteAccountUseCase()
+                authService.deleteAccount()
                 updateState { it.copy(actionMessage = "Account deleted") }
                 navigate(SettingsDirection.NavigateToAuth)
             } catch (e: Throwable) {

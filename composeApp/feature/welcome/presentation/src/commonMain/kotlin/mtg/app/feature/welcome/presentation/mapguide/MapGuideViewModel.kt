@@ -1,17 +1,16 @@
 package mtg.app.feature.welcome.presentation.mapguide
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.trade.domain.LoadMapPinsUseCase
-import mtg.app.feature.trade.domain.ReplaceMapPinsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.trade.domain.StoredMapPin
+import mtg.app.feature.trade.domain.TradeService
+import mtg.app.core.domain.obj.AuthContext
 import mtg.app.feature.welcome.presentation.WelcomeLocation
 import kotlinx.coroutines.flow.collectLatest
 
 class MapGuideViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadMapPins: LoadMapPinsUseCase,
-    private val replaceMapPins: ReplaceMapPinsUseCase,
+    private val authService: AuthDomainService,
+    private val tradeService: TradeService,
 ) : BaseViewModel<MapGuideScreenState, MapGuideUiEvent, MapGuideDirection>(
     initialState = MapGuideScreenState(),
 ) {
@@ -21,7 +20,7 @@ class MapGuideViewModel(
 
     init {
         launch {
-            observeAuthState().collectLatest { user ->
+            authService.currentUser.collectLatest { user ->
                 currentUid = user?.uid
                 currentEmail = user?.email
                 currentIdToken = user?.idToken
@@ -57,16 +56,15 @@ class MapGuideViewModel(
             setError(null)
 
             runCatching {
-                val existing = loadMapPins(uid = uid, idToken = idToken)
+                val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextPinNumber(existing) + 1}",
                     latitude = location.latitude,
                     longitude = location.longitude,
                     radiusMeters = if (existing.isEmpty()) 1_000f else existing.first().radiusMeters,
                 )
-                replaceMapPins(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceMapPins(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     pins = existing + nextPin,
                     actorEmail = currentEmail,
                     triggerRematch = true,

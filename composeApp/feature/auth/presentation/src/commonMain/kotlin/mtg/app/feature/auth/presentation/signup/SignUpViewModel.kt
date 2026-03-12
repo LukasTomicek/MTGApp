@@ -1,19 +1,17 @@
 package mtg.app.feature.auth.presentation.signup
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.auth.domain.SignUpUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import kotlinx.coroutines.flow.collectLatest
 
 class SignUpViewModel(
-    private val signUp: SignUpUseCase,
-    observeAuthState: ObserveAuthStateUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<SignUpScreenState, SignUpUiEvent, SignUpDirection>(
     initialState = SignUpScreenState(),
 ) {
     init {
         launch {
-            observeAuthState().collectLatest { user ->
+            authService.currentUser.collectLatest { user ->
                 if (user != null) {
                     navigate(SignUpDirection.NavigateToHome)
                 }
@@ -43,7 +41,7 @@ class SignUpViewModel(
                     return@launch
                 }
 
-                signUp(email = email, password = password)
+                authService.signUp(email = email, password = password)
                 updateState { it.copy(infoMessage = "Account created") }
             } catch (e: Throwable) {
                 setError(e.message ?: "Sign up failed")

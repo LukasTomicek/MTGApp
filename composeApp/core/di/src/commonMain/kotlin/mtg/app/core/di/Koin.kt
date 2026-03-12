@@ -1,5 +1,6 @@
 package mtg.app.core.di
 
+import mtg.app.core.data.remote.coreDataModule
 import mtg.app.feature.auth.di.authFeatureModule
 import mtg.app.feature.chat.di.chatFeatureModule
 import mtg.app.feature.map.di.mapFeatureModule
@@ -19,6 +20,7 @@ fun initKoin() {
     startKoin {
         modules(
             mainModule,
+            coreDataModule,
             authFeatureModule,
             welcomeFeatureModule,
             tradeFeatureModule,

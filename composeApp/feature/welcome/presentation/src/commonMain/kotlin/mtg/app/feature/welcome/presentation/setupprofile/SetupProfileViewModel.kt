@@ -1,17 +1,14 @@
 package mtg.app.feature.welcome.presentation.setupprofile
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.welcome.domain.LoadWelcomeNicknameUseCase
-import mtg.app.feature.welcome.domain.SaveOnboardingCompletedUseCase
-import mtg.app.feature.welcome.domain.SaveWelcomeNicknameUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.welcome.domain.WelcomeService
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class SetupProfileViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadWelcomeNickname: LoadWelcomeNicknameUseCase,
-    private val saveWelcomeNickname: SaveWelcomeNicknameUseCase,
-    private val saveOnboardingCompleted: SaveOnboardingCompletedUseCase,
+    private val authService: AuthDomainService,
+    private val welcomeService: WelcomeService,
 ) : BaseViewModel<SetupProfileScreenState, SetupProfileUiEvent, SetupProfileDirection>(
     initialState = SetupProfileScreenState(),
 ) {
@@ -40,7 +37,7 @@ class SetupProfileViewModel(
 
     private fun observeUser() {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
 
@@ -55,7 +52,7 @@ class SetupProfileViewModel(
                 }
 
                 runCatching {
-                    loadWelcomeNickname(uid = user.uid, idToken = user.idToken)
+                    welcomeService.loadNickname(uid = user.uid)
                 }.onSuccess { nickname ->
                     if (!nickname.isNullOrBlank()) {
                         updateState {
@@ -88,8 +85,15 @@ class SetupProfileViewModel(
         launch {
             updateState { it.copy(isSavingNickname = true, nicknameError = null) }
             runCatching {
-                saveWelcomeNickname(uid = uid, idToken = idToken, nickname = nickname)
-                saveOnboardingCompleted(uid = uid, idToken = idToken, completed = true)
+                val context = AuthContext(uid = uid, idToken = idToken)
+                welcomeService.saveNickname(
+                    context = context,
+                    nickname = nickname,
+                )
+                welcomeService.saveOnboardingCompleted(
+                    context = context,
+                    completed = true,
+                )
             }.onSuccess {
                 updateState { it.copy(isSavingNickname = false) }
                 navigate(SetupProfileDirection.NavigateToHome)

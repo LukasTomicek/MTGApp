@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
 }
 
@@ -21,9 +22,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.composeApp.core.data)
+            implementation(projects.composeApp.core.domain)
             implementation(projects.composeApp.feature.trade.domain)
+            implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
         }
     }
 }
-

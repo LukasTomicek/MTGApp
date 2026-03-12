@@ -21,6 +21,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.composeApp.core.data)
             implementation(projects.composeApp.core.domain)
             implementation(projects.composeApp.core.presentation)
             implementation(projects.composeApp.feature.auth.data)
@@ -28,19 +29,8 @@ kotlin {
             implementation(projects.composeApp.feature.auth.infrastructure)
             implementation(projects.composeApp.feature.auth.presentation)
             implementation(libs.koin.core)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.client.logging)
-            implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.kotlinx.serialization.json)
-        }
-
-        androidMain.dependencies {
-            implementation(libs.ktor.client.okhttp)
-        }
-
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

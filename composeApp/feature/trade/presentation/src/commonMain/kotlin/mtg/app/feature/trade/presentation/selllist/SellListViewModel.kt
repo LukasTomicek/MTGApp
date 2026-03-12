@@ -1,17 +1,13 @@
 package mtg.app.feature.trade.presentation.selllist
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.trade.domain.LoadTradeListEntriesUseCase
-import mtg.app.feature.trade.domain.LoadMapPinsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.trade.domain.MtgCard
-import mtg.app.feature.trade.domain.ReplaceMapPinsUseCase
-import mtg.app.feature.trade.domain.ReplaceTradeListEntriesUseCase
-import mtg.app.feature.trade.domain.SearchTradeCardPrintsUseCase
-import mtg.app.feature.trade.domain.SearchTradeCardsUseCase
 import mtg.app.feature.trade.domain.StoredMapPin
 import mtg.app.feature.trade.domain.TradeFilter
 import mtg.app.feature.trade.domain.TradeListType
+import mtg.app.feature.trade.domain.TradeService
+import mtg.app.core.domain.obj.AuthContext
 import mtg.app.feature.trade.presentation.utils.model.CardCondition
 import mtg.app.feature.trade.presentation.utils.model.CollectionArtOption
 import mtg.app.feature.trade.presentation.utils.model.CollectionCardEntry
@@ -25,14 +21,9 @@ import mtg.app.feature.trade.presentation.utils.SellListTransferStore
 import kotlinx.coroutines.Job
 
 class SellListViewModel(
-    private val searchCards: SearchTradeCardsUseCase,
-    private val searchCardPrints: SearchTradeCardPrintsUseCase,
+    private val tradeService: TradeService,
     private val sellListTransferStore: SellListTransferStore,
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadTradeListEntries: LoadTradeListEntriesUseCase,
-    private val replaceTradeListEntries: ReplaceTradeListEntriesUseCase,
-    private val loadMapPins: LoadMapPinsUseCase,
-    private val replaceMapPins: ReplaceMapPinsUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<SellListScreenState, SellListUiEvent, SellListDirection>(
     initialState = SellListScreenState(),
 ) {
@@ -46,7 +37,7 @@ class SellListViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 currentUserEmail = user?.email
@@ -414,7 +405,7 @@ class SellListViewModel(
                 val cards = if (query.isBlank()) {
                     emptyList()
                 } else {
-                    searchCards(query = query, filter = TradeFilter.ALL)
+                    tradeService.searchCards(query = query, filter = TradeFilter.ALL)
                 }
 
                 updateState {
@@ -441,7 +432,7 @@ class SellListViewModel(
             setError(null)
 
             try {
-                val prints = searchCardPrints(cardName = card.name)
+                val prints = tradeService.searchCardPrints(cardName = card.name)
                 val options = buildArtOptions(card = card, prints = prints)
                 val selectedId = resolveSelectedArtId(
                     options = options,
@@ -498,9 +489,8 @@ class SellListViewModel(
         persistJob?.cancel()
         persistJob = launch {
             runCatching {
-                replaceTradeListEntries(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceListEntries(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.SELL_LIST,
                     entries = entries,
                     actorEmail = currentUserEmail,
@@ -518,9 +508,8 @@ class SellListViewModel(
             setError(null)
 
             try {
-                val persistedEntries = loadTradeListEntries(
-                    uid = uid,
-                    idToken = idToken,
+                val persistedEntries = tradeService.loadListEntries(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.SELL_LIST,
                 ).map { it.toCollectionCardEntry() }
                 val pending = sellListTransferStore.pendingEntries.value
@@ -560,7 +549,7 @@ class SellListViewModel(
     private fun refreshMapPinsPresence(uid: String, idToken: String) {
         launch {
             runCatching {
-                loadMapPins(uid = uid, idToken = idToken)
+                tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { pins ->
                 hasMapPins = pins.isNotEmpty()
             }.onFailure {
@@ -575,7 +564,7 @@ class SellListViewModel(
         val idToken = currentIdToken ?: return
         launch {
             runCatching {
-                loadMapPins(uid = uid, idToken = idToken)
+                tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { pins ->
                 hasMapPins = pins.isNotEmpty()
                 if (pins.isEmpty() && state.value.data.isAddMode) {
@@ -612,16 +601,15 @@ class SellListViewModel(
 
         launch {
             runCatching {
-                val existing = loadMapPins(uid = uid, idToken = idToken)
+                val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextMapPinNumber(existing) + 1}",
                     latitude = coordinate.latitude,
                     longitude = coordinate.longitude,
                     radiusMeters = if (existing.isEmpty()) 1_000f else existing.first().radiusMeters,
                 )
-                replaceMapPins(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceMapPins(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     pins = existing + nextPin,
                     actorEmail = currentUserEmail,
                     triggerRematch = true,

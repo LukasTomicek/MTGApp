@@ -1,16 +1,15 @@
 package mtg.app.feature.map.presentation.map
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.trade.domain.LoadMapPinsUseCase
-import mtg.app.feature.trade.domain.ReplaceMapPinsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.trade.domain.StoredMapPin
+import mtg.app.feature.trade.domain.TradeService
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class MapViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadMapPins: LoadMapPinsUseCase,
-    private val replaceMapPins: ReplaceMapPinsUseCase,
+    private val authService: AuthDomainService,
+    private val tradeService: TradeService,
 ) : BaseViewModel<MapScreenState, MapUiEvent, MapDirection>(
     initialState = MapScreenState(),
 ) {
@@ -21,7 +20,7 @@ class MapViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentEmail = user?.email
                 currentIdToken = user?.idToken
@@ -149,9 +148,8 @@ class MapViewModel(
 
         launch {
             runCatching {
-                replaceMapPins(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceMapPins(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     pins = pins,
                     actorEmail = email,
                     triggerRematch = true,
@@ -167,7 +165,7 @@ class MapViewModel(
             setLoading(true)
             setError(null)
             runCatching {
-                loadMapPins(uid = uid, idToken = idToken)
+                tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { persisted ->
                 val pins = persisted.map {
                     MapPin(
@@ -183,9 +181,8 @@ class MapViewModel(
                         radiusMeters = persisted.firstOrNull()?.radiusMeters ?: state.radiusMeters,
                     )
                 }
-                replaceMapPins(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceMapPins(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     pins = persisted,
                     actorEmail = currentEmail,
                     triggerRematch = false,

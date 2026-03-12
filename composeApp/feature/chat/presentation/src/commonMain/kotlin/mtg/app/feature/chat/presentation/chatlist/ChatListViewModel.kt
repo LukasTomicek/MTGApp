@@ -1,15 +1,15 @@
 package mtg.app.feature.chat.presentation.chatlist
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.chat.domain.DeleteChatThreadUseCase
-import mtg.app.feature.chat.domain.LoadMessageThreadsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
+import mtg.app.feature.chat.domain.ChatService
+import mtg.app.core.domain.obj.AuthContext
+import mtg.app.feature.chat.domain.obj.DeleteChatThreadRequest
 import kotlinx.coroutines.flow.collect
 
 class ChatListViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadMessageThreads: LoadMessageThreadsUseCase,
-    private val deleteChatThread: DeleteChatThreadUseCase,
+    private val authService: AuthDomainService,
+    private val chatService: ChatService,
 ) : BaseViewModel<ChatListScreenState, ChatListUiEvent, ChatListDirection>(
     initialState = ChatListScreenState(),
 ) {
@@ -18,7 +18,7 @@ class ChatListViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 if (user == null) {
@@ -48,7 +48,7 @@ class ChatListViewModel(
             setLoading(true)
             setError(null)
             runCatching {
-                loadMessageThreads(uid = uid, idToken = idToken)
+                chatService.loadThreads(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { threads ->
                 updateState {
                     it.copy(
@@ -71,11 +71,9 @@ class ChatListViewModel(
             setLoading(true)
             setError(null)
             runCatching {
-                deleteChatThread(
-                    uid = uid,
-                    idToken = idToken,
-                    chatId = chatId,
-                    counterpartUid = counterpartUid,
+                chatService.deleteThread(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    request = DeleteChatThreadRequest(chatId = chatId, counterpartUid = counterpartUid),
                 )
             }.onSuccess {
                 updateState { state ->

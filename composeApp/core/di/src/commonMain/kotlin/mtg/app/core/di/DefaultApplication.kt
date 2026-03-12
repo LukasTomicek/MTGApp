@@ -3,8 +3,7 @@ package mtg.app.core.di
 import mtg.app.core.presentation.navigation.BottomNavigationBar
 import mtg.app.core.presentation.navigation.Route
 import mtg.app.core.presentation.navigation.TopNavigationBar
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.auth.domain.ObserveAuthInitializationUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.auth.presentation.forgotpassword.ForgotPasswordDestination
 import mtg.app.feature.auth.presentation.forgotpassword.ForgotPasswordDirection
 import mtg.app.feature.auth.presentation.forgotpassword.ForgotPasswordScreen
@@ -56,7 +55,7 @@ import mtg.app.feature.trade.presentation.selllist.SellListViewModel
 import mtg.app.feature.trade.presentation.trade.TradeDirection
 import mtg.app.feature.trade.presentation.trade.TradeScreen
 import mtg.app.feature.trade.presentation.trade.TradeViewModel
-import mtg.app.feature.welcome.domain.LoadOnboardingCompletedUseCase
+import mtg.app.feature.welcome.domain.WelcomeService
 import mtg.app.feature.welcome.presentation.mapguide.MapGuideDirection
 import mtg.app.feature.welcome.presentation.mapguide.MapGuideScreen
 import mtg.app.feature.welcome.presentation.mapguide.MapGuideViewModel
@@ -89,6 +88,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
@@ -102,13 +102,12 @@ fun DefaultApplication() {
         startDestination = Route.Launch.value,
     ) {
         composable(route = Route.Launch.value) {
-            val observeAuthState = koinInject<ObserveAuthStateUseCase>()
-            val observeAuthInitialization = koinInject<ObserveAuthInitializationUseCase>()
-            val loadOnboardingCompleted = koinInject<LoadOnboardingCompletedUseCase>()
+            val authService = koinInject<AuthDomainService>()
+            val welcomeService = koinInject<WelcomeService>()
 
             LaunchedEffect(Unit) {
-                observeAuthInitialization().filter { it }.first()
-                val user = observeAuthState().first()
+                authService.isInitialized.filter { it }.first()
+                val user = authService.currentUser.first()
                 if (user == null) {
                     navController.navigate(Route.AuthSignIn.value) {
                         popUpTo(Route.Launch.value) { inclusive = true }
@@ -116,7 +115,9 @@ fun DefaultApplication() {
                     }
                 } else {
                     val onboardingCompleted = runCatching {
-                        loadOnboardingCompleted(uid = user.uid, idToken = user.idToken)
+                        welcomeService.loadOnboardingCompleted(
+                            context = AuthContext(uid = user.uid, idToken = user.idToken),
+                        )
                     }.getOrDefault(false)
                     if (onboardingCompleted) {
                         navController.navigate(Route.Home.value) {

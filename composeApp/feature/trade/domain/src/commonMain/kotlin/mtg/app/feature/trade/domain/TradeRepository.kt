@@ -1,55 +1,38 @@
 package mtg.app.feature.trade.domain
 
+import mtg.app.feature.trade.domain.obj.EnsureMarketPlaceChatRequest
+import mtg.app.feature.trade.domain.obj.MarketPlaceCardsQuery
+import mtg.app.feature.trade.domain.obj.MarketPlaceRecentCardsQuery
+import mtg.app.feature.trade.domain.obj.MarketPlaceSellersQuery
+import mtg.app.core.domain.obj.AuthContext
+
 interface TradeRepository {
     suspend fun searchCards(query: String, filter: TradeFilter): List<MtgCard>
     suspend fun resolveCardsByExactNames(names: Set<String>): Map<String, MtgCard>
     suspend fun searchCardPrints(cardName: String): List<MtgCard>
     suspend fun fetchDefaultCardsBulkUrl(): String?
-    suspend fun loadListEntries(
-        uid: String,
-        idToken: String,
-        listType: TradeListType,
-    ): List<StoredTradeCardEntry>
+    suspend fun loadListEntries(context: AuthContext, listType: TradeListType): List<StoredTradeCardEntry>
     suspend fun replaceListEntries(
-        uid: String,
-        idToken: String,
+        context: AuthContext,
         listType: TradeListType,
         entries: List<StoredTradeCardEntry>,
         actorEmail: String? = null,
     )
-    suspend fun loadMapPins(uid: String, idToken: String): List<StoredMapPin>
+    suspend fun loadMapPins(context: AuthContext): List<StoredMapPin>
     suspend fun replaceMapPins(
-        uid: String,
-        idToken: String,
+        context: AuthContext,
         pins: List<StoredMapPin>,
         actorEmail: String? = null,
         triggerRematch: Boolean = true,
     )
-    suspend fun searchMarketPlaceCards(
-        idToken: String,
-        viewerUid: String,
-        query: String,
-        offerType: MarketPlaceOfferType,
-    ): List<MarketPlaceCard>
+    suspend fun searchMarketPlaceCards(context: AuthContext, query: MarketPlaceCardsQuery): List<MarketPlaceCard>
     suspend fun loadRecentMarketPlaceCards(
-        idToken: String,
-        viewerUid: String,
-        limit: Int,
-        offerType: MarketPlaceOfferType,
+        context: AuthContext,
+        query: MarketPlaceRecentCardsQuery,
     ): List<MarketPlaceCard>
     suspend fun loadMarketPlaceSellers(
-        idToken: String,
-        viewerUid: String,
-        cardId: String,
-        cardName: String,
+        context: AuthContext,
+        query: MarketPlaceSellersQuery,
     ): List<MarketPlaceSeller>
-    suspend fun ensureMarketPlaceChat(
-        idToken: String,
-        buyerUid: String,
-        buyerEmail: String,
-        sellerUid: String,
-        sellerEmail: String,
-        cardId: String,
-        cardName: String,
-    ): String
+    suspend fun ensureMarketPlaceChat(context: AuthContext, request: EnsureMarketPlaceChatRequest): String
 }

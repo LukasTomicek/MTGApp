@@ -1,25 +1,20 @@
 package mtg.app.feature.trade.presentation.marketplace
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.trade.domain.EnsureMarketPlaceChatUseCase
-import mtg.app.feature.trade.domain.LoadMapPinsUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.trade.domain.MarketPlaceOfferType
-import mtg.app.feature.trade.domain.LoadMarketPlaceSellersUseCase
-import mtg.app.feature.trade.domain.LoadRecentMarketPlaceCardsUseCase
-import mtg.app.feature.trade.domain.ReplaceMapPinsUseCase
-import mtg.app.feature.trade.domain.SearchMarketPlaceCardsUseCase
 import mtg.app.feature.trade.domain.StoredMapPin
+import mtg.app.feature.trade.domain.TradeService
+import mtg.app.feature.trade.domain.obj.EnsureMarketPlaceChatRequest
+import mtg.app.feature.trade.domain.obj.MarketPlaceCardsQuery
+import mtg.app.feature.trade.domain.obj.MarketPlaceRecentCardsQuery
+import mtg.app.feature.trade.domain.obj.MarketPlaceSellersQuery
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class MarketPlaceViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val searchMarketPlaceCards: SearchMarketPlaceCardsUseCase,
-    private val loadRecentMarketPlaceCards: LoadRecentMarketPlaceCardsUseCase,
-    private val loadMarketPlaceSellers: LoadMarketPlaceSellersUseCase,
-    private val ensureMarketPlaceChat: EnsureMarketPlaceChatUseCase,
-    private val loadMapPins: LoadMapPinsUseCase,
-    private val replaceMapPins: ReplaceMapPinsUseCase,
+    private val authService: AuthDomainService,
+    private val tradeService: TradeService,
 ) : BaseViewModel<MarketPlaceScreenState, MarketPlaceUiEvent, MarketPlaceDirection>(
     initialState = MarketPlaceScreenState(),
 ) {
@@ -30,7 +25,7 @@ class MarketPlaceViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentEmail = user?.email
                 currentIdToken = user?.idToken
@@ -142,17 +137,19 @@ class MarketPlaceViewModel(
 
             try {
                 val query = state.value.data.searchQuery
-                val cards = searchMarketPlaceCards(
-                    idToken = idToken,
-                    viewerUid = viewerUid,
-                    query = query,
-                    offerType = MarketPlaceOfferType.SELL,
+                val cards = tradeService.searchMarketPlaceCards(
+                    context = AuthContext(uid = viewerUid, idToken = idToken),
+                    query = MarketPlaceCardsQuery(
+                        query = query,
+                        offerType = MarketPlaceOfferType.SELL,
+                    ),
                 )
-                val buyCards = searchMarketPlaceCards(
-                    idToken = idToken,
-                    viewerUid = viewerUid,
-                    query = query,
-                    offerType = MarketPlaceOfferType.BUY,
+                val buyCards = tradeService.searchMarketPlaceCards(
+                    context = AuthContext(uid = viewerUid, idToken = idToken),
+                    query = MarketPlaceCardsQuery(
+                        query = query,
+                        offerType = MarketPlaceOfferType.BUY,
+                    ),
                 )
                 updateState {
                     it.copy(
@@ -174,11 +171,12 @@ class MarketPlaceViewModel(
 
         launch {
             runCatching {
-                loadRecentMarketPlaceCards(
-                    idToken = idToken,
-                    viewerUid = viewerUid,
-                    limit = 20,
-                    offerType = MarketPlaceOfferType.SELL,
+                tradeService.loadRecentMarketPlaceCards(
+                    context = AuthContext(uid = viewerUid, idToken = idToken),
+                    query = MarketPlaceRecentCardsQuery(
+                        limit = 20,
+                        offerType = MarketPlaceOfferType.SELL,
+                    ),
                 )
             }.onSuccess { cards ->
                 updateState { it.copy(recentSellCards = cards) }
@@ -189,11 +187,12 @@ class MarketPlaceViewModel(
 
         launch {
             runCatching {
-                loadRecentMarketPlaceCards(
-                    idToken = idToken,
-                    viewerUid = viewerUid,
-                    limit = 20,
-                    offerType = MarketPlaceOfferType.BUY,
+                tradeService.loadRecentMarketPlaceCards(
+                    context = AuthContext(uid = viewerUid, idToken = idToken),
+                    query = MarketPlaceRecentCardsQuery(
+                        limit = 20,
+                        offerType = MarketPlaceOfferType.BUY,
+                    ),
                 )
             }.onSuccess { cards ->
                 updateState { it.copy(recentBuyCards = cards) }
@@ -210,11 +209,12 @@ class MarketPlaceViewModel(
         launch {
             setLoading(true)
             runCatching {
-                loadMarketPlaceSellers(
-                    idToken = idToken,
-                    viewerUid = ownUid,
-                    cardId = cardId,
-                    cardName = cardName,
+                tradeService.loadMarketPlaceSellers(
+                    context = AuthContext(uid = ownUid, idToken = idToken),
+                    query = MarketPlaceSellersQuery(
+                        cardId = cardId,
+                        cardName = cardName,
+                    ),
                 )
             }.onSuccess { sellers ->
                 val filtered = sellers.filter { it.uid != ownUid }
@@ -251,14 +251,16 @@ class MarketPlaceViewModel(
         launch {
             setLoading(true)
             runCatching {
-                ensureMarketPlaceChat(
-                    idToken = idToken,
-                    buyerUid = buyerUid,
-                    buyerEmail = buyerEmail,
-                    sellerUid = seller.uid,
-                    sellerEmail = seller.displayName,
-                    cardId = cardId,
-                    cardName = cardName,
+                tradeService.ensureMarketPlaceChat(
+                    context = AuthContext(uid = buyerUid, idToken = idToken),
+                    request = EnsureMarketPlaceChatRequest(
+                        buyerUid = buyerUid,
+                        buyerEmail = buyerEmail,
+                        sellerUid = seller.uid,
+                        sellerEmail = seller.displayName,
+                        cardId = cardId,
+                        cardName = cardName,
+                    ),
                 )
             }.onSuccess { chatId ->
                 updateState {
@@ -295,7 +297,7 @@ class MarketPlaceViewModel(
     private fun refreshMapPinsPresence(uid: String, idToken: String) {
         launch {
             runCatching {
-                loadMapPins(uid = uid, idToken = idToken)
+                tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { pins ->
                 hasMapPins = pins.isNotEmpty()
                 updateState {
@@ -317,7 +319,7 @@ class MarketPlaceViewModel(
 
         launch {
             runCatching {
-                loadMapPins(uid = uid, idToken = idToken)
+                tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
             }.onSuccess { pins ->
                 hasMapPins = pins.isNotEmpty()
                 if (pins.isEmpty()) {
@@ -351,16 +353,15 @@ class MarketPlaceViewModel(
 
         launch {
             runCatching {
-                val existing = loadMapPins(uid = uid, idToken = idToken)
+                val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextMapPinNumber(existing) + 1}",
                     latitude = coordinate.latitude,
                     longitude = coordinate.longitude,
                     radiusMeters = if (existing.isEmpty()) 1_000f else existing.first().radiusMeters,
                 )
-                replaceMapPins(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceMapPins(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     pins = existing + nextPin,
                     actorEmail = currentEmail,
                     triggerRematch = true,

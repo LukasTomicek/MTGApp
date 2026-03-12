@@ -1,18 +1,15 @@
 package mtg.app.feature.notifications.presentation
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.notifications.domain.DeleteNotificationUseCase
-import mtg.app.feature.notifications.domain.LoadNotificationsUseCase
-import mtg.app.feature.notifications.domain.MarkNotificationReadUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.notifications.domain.NotificationType
+import mtg.app.feature.notifications.domain.NotificationsService
+import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
 
 class NotificationsViewModel(
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadNotifications: LoadNotificationsUseCase,
-    private val markNotificationRead: MarkNotificationReadUseCase,
-    private val deleteNotification: DeleteNotificationUseCase,
+    private val authService: AuthDomainService,
+    private val notificationsService: NotificationsService,
 ) : BaseViewModel<NotificationsScreenState, NotificationsUiEvent, NotificationsDirection>(
     initialState = NotificationsScreenState(),
 ) {
@@ -21,7 +18,7 @@ class NotificationsViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 if (user == null) {
@@ -123,7 +120,9 @@ class NotificationsViewModel(
             setLoading(true)
             setError(null)
             runCatching {
-                loadNotifications(uid = uid, idToken = idToken)
+                notificationsService.loadNotifications(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                )
             }.onSuccess { items ->
                 updateState { it.copy(items = items) }
             }.onFailure {
@@ -139,9 +138,8 @@ class NotificationsViewModel(
 
         launch {
             runCatching {
-                markNotificationRead(
-                    uid = uid,
-                    idToken = idToken,
+                notificationsService.markNotificationRead(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     notificationId = notificationId,
                 )
             }.onSuccess {
@@ -164,9 +162,8 @@ class NotificationsViewModel(
 
         launch {
             runCatching {
-                deleteNotification(
-                    uid = uid,
-                    idToken = idToken,
+                notificationsService.deleteNotification(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     notificationId = notificationId,
                 )
             }.onSuccess {

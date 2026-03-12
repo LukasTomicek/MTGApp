@@ -1,15 +1,12 @@
 package mtg.app.feature.trade.presentation.collection
 
 import mtg.app.core.presentation.BaseViewModel
-import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
-import mtg.app.feature.trade.domain.LoadTradeListEntriesUseCase
+import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.trade.domain.MtgCard
-import mtg.app.feature.trade.domain.ResolveTradeCardsByExactNamesUseCase
-import mtg.app.feature.trade.domain.ReplaceTradeListEntriesUseCase
-import mtg.app.feature.trade.domain.SearchTradeCardPrintsUseCase
-import mtg.app.feature.trade.domain.SearchTradeCardsUseCase
 import mtg.app.feature.trade.domain.TradeFilter
 import mtg.app.feature.trade.domain.TradeListType
+import mtg.app.feature.trade.domain.TradeService
+import mtg.app.core.domain.obj.AuthContext
 import mtg.app.feature.trade.presentation.utils.mapper.toCollectionCardEntry
 import mtg.app.feature.trade.presentation.utils.mapper.toStoredTradeCardEntry
 import mtg.app.feature.trade.presentation.utils.model.CardCondition
@@ -25,13 +22,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 
 class CollectionViewModel(
-    private val searchCards: SearchTradeCardsUseCase,
-    private val resolveCardsByExactNames: ResolveTradeCardsByExactNamesUseCase,
-    private val searchCardPrints: SearchTradeCardPrintsUseCase,
+    private val tradeService: TradeService,
     private val sellListTransferStore: SellListTransferStore,
-    private val observeAuthState: ObserveAuthStateUseCase,
-    private val loadTradeListEntries: LoadTradeListEntriesUseCase,
-    private val replaceTradeListEntries: ReplaceTradeListEntriesUseCase,
+    private val authService: AuthDomainService,
 ) : BaseViewModel<CollectionScreenState, CollectionUiEvent, CollectionDirection>(
     initialState = CollectionScreenState(),
 ) {
@@ -41,7 +34,7 @@ class CollectionViewModel(
 
     init {
         launch {
-            observeAuthState().collect { user ->
+            authService.currentUser.collect { user ->
                 currentUid = user?.uid
                 currentIdToken = user?.idToken
                 if (user == null) {
@@ -369,7 +362,7 @@ class CollectionViewModel(
                 val cards = if (query.isBlank()) {
                     emptyList()
                 } else {
-                    searchCards(query = query, filter = TradeFilter.ALL)
+                    tradeService.searchCards(query = query, filter = TradeFilter.ALL)
                 }
 
                 updateState {
@@ -428,7 +421,7 @@ class CollectionViewModel(
                 val resolveBatchCount = resolveBatches.size.coerceAtLeast(1)
                 val resolvedFromLocalIndex = mutableMapOf<String, MtgCard>()
                 resolveBatches.forEachIndexed { index, batch ->
-                    val resolvedBatch = resolveCardsByExactNames(batch.toSet()).mapKeys { it.key.lowercase() }
+                    val resolvedBatch = tradeService.resolveCardsByExactNames(batch.toSet()).mapKeys { it.key.lowercase() }
                     resolvedFromLocalIndex.putAll(resolvedBatch)
 
                     val batchPart = (index + 1).toFloat() / resolveBatchCount.toFloat()
@@ -573,7 +566,7 @@ class CollectionViewModel(
             shouldThrottle = true
 
             runCatching {
-                searchCards(query = cardName, filter = TradeFilter.ALL)
+                tradeService.searchCards(query = cardName, filter = TradeFilter.ALL)
             }.onSuccess { cards ->
                 return cards.firstOrNull { it.name.equals(cardName, ignoreCase = true) } ?: cards.firstOrNull()
             }.onFailure { throwable ->
@@ -602,7 +595,7 @@ class CollectionViewModel(
             setError(null)
 
             try {
-                val prints = searchCardPrints(cardName = card.name)
+                val prints = tradeService.searchCardPrints(cardName = card.name)
                 val options = buildArtOptions(card = card, prints = prints)
                 val selectedId = resolveSelectedArtId(
                     options = options,
@@ -653,9 +646,8 @@ class CollectionViewModel(
 
         launch {
             runCatching {
-                replaceTradeListEntries(
-                    uid = uid,
-                    idToken = idToken,
+                tradeService.replaceListEntries(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.COLLECTION,
                     entries = entries,
                 )
@@ -671,9 +663,8 @@ class CollectionViewModel(
         val payload = entries.map { it.toStoredTradeCardEntry() }
 
         return runCatching {
-            replaceTradeListEntries(
-                uid = uid,
-                idToken = idToken,
+            tradeService.replaceListEntries(
+                context = AuthContext(uid = uid, idToken = idToken),
                 listType = TradeListType.COLLECTION,
                 entries = payload,
             )
@@ -687,9 +678,8 @@ class CollectionViewModel(
         val idToken = currentIdToken ?: return
 
         runCatching {
-            loadTradeListEntries(
-                uid = uid,
-                idToken = idToken,
+            tradeService.loadListEntries(
+                context = AuthContext(uid = uid, idToken = idToken),
                 listType = TradeListType.COLLECTION,
             )
         }.onSuccess { remoteEntries ->
@@ -716,9 +706,8 @@ class CollectionViewModel(
             setError(null)
 
             try {
-                val entries = loadTradeListEntries(
-                    uid = uid,
-                    idToken = idToken,
+                val entries = tradeService.loadListEntries(
+                    context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.COLLECTION,
                 ).map { it.toCollectionCardEntry() }
 

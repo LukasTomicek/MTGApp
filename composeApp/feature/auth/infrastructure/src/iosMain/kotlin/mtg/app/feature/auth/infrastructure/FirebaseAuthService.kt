@@ -1,7 +1,14 @@
 package mtg.app.feature.auth.infrastructure
 
+import io.ktor.client.call.body
 import mtg.app.feature.auth.data.toAuthUser
 import mtg.app.feature.auth.data.toFirebaseErrorMessage
+import mtg.app.feature.auth.data.FirebaseAuthResponseDto
+import mtg.app.feature.auth.data.FirebaseDeleteAccountRequestDto
+import mtg.app.feature.auth.data.FirebaseEmailPasswordRequestDto
+import mtg.app.feature.auth.data.FirebaseErrorResponseDto
+import mtg.app.feature.auth.data.FirebasePasswordResetRequestDto
+import mtg.app.feature.auth.data.FirebaseUpdatePasswordRequestDto
 import mtg.app.feature.auth.domain.AuthUser
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
@@ -10,10 +17,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 actual class FirebaseAuthService actual constructor(
     private val httpClient: HttpClient,
@@ -42,12 +45,12 @@ actual class FirebaseAuthService actual constructor(
     }
 
     override suspend fun sendPasswordReset(email: String) {
-        post(
+        post<Unit>(
             endpoint = "accounts:sendOobCode",
-            payload = buildJsonObject {
-                put("requestType", "PASSWORD_RESET")
-                put("email", email.trim())
-            },
+            payload = FirebasePasswordResetRequestDto(
+                requestType = "PASSWORD_RESET",
+                email = email.trim(),
+            ),
         )
     }
 
@@ -62,41 +65,37 @@ actual class FirebaseAuthService actual constructor(
             email = email,
             password = currentPassword,
         )
-        post(
+        post<Unit>(
             endpoint = "accounts:update",
-            payload = buildJsonObject {
-                put("idToken", idToken)
-                put("password", newPassword)
-                put("returnSecureToken", true)
-            },
+            payload = FirebaseUpdatePasswordRequestDto(
+                idToken = idToken,
+                password = newPassword,
+            ),
         )
     }
 
     override suspend fun deleteAccount(idToken: String) {
-        post(
+        post<Unit>(
             endpoint = "accounts:delete",
-            payload = buildJsonObject {
-                put("idToken", idToken)
-            },
+            payload = FirebaseDeleteAccountRequestDto(idToken = idToken),
         )
     }
 
     override suspend fun signOut() = Unit
 
     private suspend fun authenticate(endpoint: String, email: String, password: String): AuthUser {
-        val responseJson = post(
+        val response = post<FirebaseAuthResponseDto>(
             endpoint = endpoint,
-            payload = buildJsonObject {
-                put("email", email.trim())
-                put("password", password)
-                put("returnSecureToken", true)
-            },
+            payload = FirebaseEmailPasswordRequestDto(
+                email = email.trim(),
+                password = password,
+            ),
         )
 
-        return responseJson.toAuthUser()
+        return response.toAuthUser()
     }
 
-    private suspend fun post(endpoint: String, payload: JsonObject): JsonObject {
+    private suspend inline fun <reified ResponseDto> post(endpoint: String, payload: Any): ResponseDto {
         val key = firebaseWebApiKey.trim()
         if (key.isBlank()) {
             error("Firebase API key is missing. Set FIREBASE_WEB_API_KEY in auth DI module.")
@@ -104,19 +103,20 @@ actual class FirebaseAuthService actual constructor(
 
         val response = httpClient.post("https://identitytoolkit.googleapis.com/v1/$endpoint?key=$key") {
             contentType(ContentType.Application.Json)
-            setBody(payload.toString())
-        }
-        val responseBody = response.bodyAsText()
-        val responseJson: JsonObject = runCatching {
-            Json.parseToJsonElement(responseBody) as JsonObject
-        }.getOrElse {
-            error("Authentication failed")
+            setBody(payload)
         }
 
         if (!response.status.isSuccess()) {
-            error(responseJson.toFirebaseErrorMessage())
+            val errorBody = runCatching { response.body<FirebaseErrorResponseDto>() }.getOrNull()
+            error(errorBody?.toFirebaseErrorMessage() ?: "Authentication failed")
         }
 
-        return responseJson
+        return if (ResponseDto::class == Unit::class) {
+            Unit as ResponseDto
+        } else {
+            runCatching { response.body<ResponseDto>() }.getOrElse {
+                error("Authentication failed")
+            }
+        }
     }
 }
