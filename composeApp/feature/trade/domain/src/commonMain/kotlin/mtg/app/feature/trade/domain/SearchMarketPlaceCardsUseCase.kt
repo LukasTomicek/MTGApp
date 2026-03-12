@@ -7,11 +7,13 @@ class SearchMarketPlaceCardsUseCase(
         idToken: String,
         viewerUid: String,
         query: String,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard> {
         return repository.searchMarketPlaceCards(
             idToken = idToken,
             viewerUid = viewerUid,
             query = query,
+            offerType = offerType,
         )
     }
 }

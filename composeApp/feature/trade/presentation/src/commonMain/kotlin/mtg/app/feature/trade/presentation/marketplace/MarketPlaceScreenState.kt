@@ -3,11 +3,19 @@ package mtg.app.feature.trade.presentation.marketplace
 import mtg.app.feature.trade.domain.MarketPlaceCard
 import mtg.app.feature.trade.domain.MarketPlaceSeller
 
+enum class MarketPlaceDisplayMode {
+    SELL,
+    BUY,
+}
+
 data class MarketPlaceScreenState(
     // Search
     val searchQuery: String = "",
-    val searchResults: List<MarketPlaceCard> = emptyList(),
-    val recentCards: List<MarketPlaceCard> = emptyList(),
+    val sellSearchResults: List<MarketPlaceCard> = emptyList(),
+    val buySearchResults: List<MarketPlaceCard> = emptyList(),
+    val recentSellCards: List<MarketPlaceCard> = emptyList(),
+    val recentBuyCards: List<MarketPlaceCard> = emptyList(),
+    val displayMode: MarketPlaceDisplayMode = MarketPlaceDisplayMode.SELL,
 
     // Selected card context
     val selectedCardId: String? = null,

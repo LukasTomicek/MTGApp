@@ -48,9 +48,14 @@ class DefaultAuthRepository(
         dataSource.sendPasswordReset(email = email)
     }
 
-    override suspend fun changePassword(newPassword: String) {
+    override suspend fun changePassword(currentPassword: String, newPassword: String) {
         val user = currentUser.value ?: error("No signed in user")
-        dataSource.changePassword(newPassword = newPassword, idToken = user.idToken)
+        dataSource.changePassword(
+            email = user.email,
+            currentPassword = currentPassword,
+            newPassword = newPassword,
+            idToken = user.idToken,
+        )
     }
 
     override suspend fun signOut() {

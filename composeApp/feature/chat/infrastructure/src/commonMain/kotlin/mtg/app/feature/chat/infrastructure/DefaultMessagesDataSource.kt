@@ -14,9 +14,7 @@ import mtg.app.feature.chat.infrastructure.service.MessagesService
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 
 class DefaultMessagesDataSource(
     private val service: MessagesService,
@@ -207,44 +205,12 @@ class DefaultMessagesDataSource(
         val tradeKey = buildTradeRatingKey(chatId = chatId, chatMeta = chatMeta)
         val hasRated = service.hasRatedChat(uid = raterUid, chatId = tradeKey, idToken = idToken)
         if (hasRated) throw IllegalStateException("You already rated this trade")
-
-        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
-        val normalizedComment = comment.trim().take(300)
-        val givenPayload = buildJsonObject {
-            put("chatId", tradeKey)
-            put("ratedUid", ratedUid)
-            put("score", clampedScore)
-            put("comment", normalizedComment)
-            put("createdAt", now)
-        }
-        service.saveGivenRating(
-            uid = raterUid,
-            chatId = tradeKey,
+        service.submitRating(
+            chatId = chatId,
             idToken = idToken,
-            payload = givenPayload,
-        )
-
-        val ratingId = "${tradeKey}_${raterUid}"
-        val receivedPayload = buildJsonObject {
-            put("chatId", chatId)
-            put("raterUid", raterUid)
-            put("score", clampedScore)
-            put("comment", normalizedComment)
-            put("createdAt", now)
-        }
-        service.saveReceivedRating(
             ratedUid = ratedUid,
-            ratingId = ratingId,
-            idToken = idToken,
-            payload = receivedPayload,
-        )
-
-        val summary = loadUserRatingSummary(uid = ratedUid, idToken = idToken)
-        service.updateUserProfileRating(
-            uid = ratedUid,
-            idToken = idToken,
-            average = summary.average,
-            count = summary.count,
+            score = clampedScore,
+            comment = comment.trim().take(300),
         )
     }
 

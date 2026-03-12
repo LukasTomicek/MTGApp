@@ -58,7 +58,6 @@ val chatFeatureModule = module {
             sendChatMessage = get(),
             proposeDealUseCase = get(),
             confirmDealUseCase = get(),
-            deleteChatThreadUseCase = get(),
             loadUserRatingSummary = get(),
             hasRatedChat = get(),
             submitUserRating = get(),

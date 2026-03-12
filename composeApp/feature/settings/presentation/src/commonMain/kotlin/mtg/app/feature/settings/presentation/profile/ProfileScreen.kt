@@ -147,12 +147,15 @@ fun ProfileScreen(
 
     if (uiState.data.isChangeNicknameModalVisible) {
         AppValueEditModal(
+            currentValue = "",
             newPassword = uiState.data.nicknameDraftInput,
             confirmPassword = "",
+            onCurrentValueChanged = { },
             onNewPasswordChanged = { onUiEvent(ProfileUiEvent.NicknameDraftChanged(it)) },
             onConfirmPasswordChanged = { },
             onDismiss = { onUiEvent(ProfileUiEvent.ChangeNicknameDismissed) },
             onSubmit = { onUiEvent(ProfileUiEvent.ChangeNicknameConfirmed) },
+            showCurrentValue = false,
             showConfirmPassword = false,
             errorMessage = uiState.data.nicknameError,
             isSaving = uiState.isLoading,
@@ -164,12 +167,15 @@ fun ProfileScreen(
 
     if (uiState.data.isChangePasswordModalVisible) {
         AppValueEditModal(
+            currentValue = uiState.data.currentPasswordInput,
             newPassword = uiState.data.newPasswordInput,
             confirmPassword = uiState.data.confirmPasswordInput,
+            onCurrentValueChanged = { onUiEvent(ProfileUiEvent.CurrentPasswordChanged(it)) },
             onNewPasswordChanged = { onUiEvent(ProfileUiEvent.NewPasswordChanged(it)) },
             onConfirmPasswordChanged = { onUiEvent(ProfileUiEvent.ConfirmPasswordChanged(it)) },
             onDismiss = { onUiEvent(ProfileUiEvent.ChangePasswordDismissed) },
             onSubmit = { onUiEvent(ProfileUiEvent.ChangePasswordConfirmed) },
+            showCurrentValue = true,
             showConfirmPassword = true,
             errorMessage = uiState.data.passwordError,
             isSaving = uiState.isLoading,

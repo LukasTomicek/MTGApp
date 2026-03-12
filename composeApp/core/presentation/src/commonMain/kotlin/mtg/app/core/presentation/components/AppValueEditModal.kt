@@ -21,19 +21,24 @@ import androidx.compose.ui.window.Dialog
 
 @Composable
 fun AppValueEditModal(
+    currentValue: String = "",
     newPassword: String,
     confirmPassword: String,
+    onCurrentValueChanged: (String) -> Unit = {},
     onNewPasswordChanged: (String) -> Unit,
     onConfirmPasswordChanged: (String) -> Unit,
     onDismiss: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    showCurrentValue: Boolean = false,
     showConfirmPassword: Boolean = true,
     errorMessage: String? = null,
     isSaving: Boolean = false,
     title: String = "Change password",
+    currentLabel: String = "Current password",
     primaryLabel: String = "New password",
     confirmLabel: String = "Confirm password",
+    currentIsSecret: Boolean = true,
     primaryIsSecret: Boolean = true,
     confirmIsSecret: Boolean = true,
     cancelButtonLabel: String = "Cancel",
@@ -54,6 +59,20 @@ fun AppValueEditModal(
                     style = MaterialTheme.typography.titleLarge,
                 )
 
+                if (showCurrentValue) {
+                    OutlinedTextField(
+                        value = currentValue,
+                        onValueChange = onCurrentValueChanged,
+                        label = { Text(currentLabel) },
+                        singleLine = true,
+                        visualTransformation = if (currentIsSecret) PasswordVisualTransformation() else VisualTransformation.None,
+                        colors = appOutlinedTextFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                    )
+                }
+
                 OutlinedTextField(
                     value = newPassword,
                     onValueChange = onNewPasswordChanged,
@@ -63,7 +82,7 @@ fun AppValueEditModal(
                     colors = appOutlinedTextFieldColors(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp),
+                        .padding(top = if (showCurrentValue) 8.dp else 12.dp),
                 )
 
                 if (showConfirmPassword) {

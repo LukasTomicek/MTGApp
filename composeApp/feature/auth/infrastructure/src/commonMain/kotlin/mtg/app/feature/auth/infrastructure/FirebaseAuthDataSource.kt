@@ -26,8 +26,18 @@ class FirebaseAuthDataSource(
         service.sendPasswordReset(email = email)
     }
 
-    override suspend fun changePassword(newPassword: String, idToken: String) {
-        service.changePassword(newPassword = newPassword, idToken = idToken)
+    override suspend fun changePassword(
+        email: String,
+        currentPassword: String,
+        newPassword: String,
+        idToken: String,
+    ) {
+        service.changePassword(
+            email = email,
+            currentPassword = currentPassword,
+            newPassword = newPassword,
+            idToken = idToken,
+        )
     }
 
     override suspend fun deleteAccount(idToken: String) {

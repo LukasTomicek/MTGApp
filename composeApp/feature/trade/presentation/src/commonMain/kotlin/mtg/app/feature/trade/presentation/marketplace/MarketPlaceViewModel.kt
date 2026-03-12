@@ -4,6 +4,7 @@ import mtg.app.core.presentation.BaseViewModel
 import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
 import mtg.app.feature.trade.domain.EnsureMarketPlaceChatUseCase
 import mtg.app.feature.trade.domain.LoadMapPinsUseCase
+import mtg.app.feature.trade.domain.MarketPlaceOfferType
 import mtg.app.feature.trade.domain.LoadMarketPlaceSellersUseCase
 import mtg.app.feature.trade.domain.LoadRecentMarketPlaceCardsUseCase
 import mtg.app.feature.trade.domain.ReplaceMapPinsUseCase
@@ -37,8 +38,10 @@ class MarketPlaceViewModel(
                     hasMapPins = null
                     updateState {
                         it.copy(
-                            searchResults = emptyList(),
-                            recentCards = emptyList(),
+                            sellSearchResults = emptyList(),
+                            buySearchResults = emptyList(),
+                            recentSellCards = emptyList(),
+                            recentBuyCards = emptyList(),
                             sellersForSelectedCard = emptyList(),
                             selectedSellerUid = null,
                             showSellersDialog = false,
@@ -61,6 +64,17 @@ class MarketPlaceViewModel(
 
             MarketPlaceUiEvent.SearchSubmitted -> {
                 loadSearchResults()
+            }
+
+            MarketPlaceUiEvent.ToggleDisplayModeClicked -> {
+                updateState {
+                    it.copy(
+                        displayMode = when (it.displayMode) {
+                            MarketPlaceDisplayMode.SELL -> MarketPlaceDisplayMode.BUY
+                            MarketPlaceDisplayMode.BUY -> MarketPlaceDisplayMode.SELL
+                        }
+                    )
+                }
             }
 
             MarketPlaceUiEvent.ScreenOpened -> {
@@ -132,8 +146,20 @@ class MarketPlaceViewModel(
                     idToken = idToken,
                     viewerUid = viewerUid,
                     query = query,
+                    offerType = MarketPlaceOfferType.SELL,
                 )
-                updateState { it.copy(searchResults = cards) }
+                val buyCards = searchMarketPlaceCards(
+                    idToken = idToken,
+                    viewerUid = viewerUid,
+                    query = query,
+                    offerType = MarketPlaceOfferType.BUY,
+                )
+                updateState {
+                    it.copy(
+                        sellSearchResults = cards,
+                        buySearchResults = buyCards,
+                    )
+                }
             } catch (e: Throwable) {
                 setError(e.message ?: "Failed to load marketplace cards")
             } finally {
@@ -152,11 +178,27 @@ class MarketPlaceViewModel(
                     idToken = idToken,
                     viewerUid = viewerUid,
                     limit = 20,
+                    offerType = MarketPlaceOfferType.SELL,
                 )
             }.onSuccess { cards ->
-                updateState { it.copy(recentCards = cards) }
+                updateState { it.copy(recentSellCards = cards) }
             }.onFailure {
                 setError(it.message ?: "Failed to load recent cards")
+            }
+        }
+
+        launch {
+            runCatching {
+                loadRecentMarketPlaceCards(
+                    idToken = idToken,
+                    viewerUid = viewerUid,
+                    limit = 20,
+                    offerType = MarketPlaceOfferType.BUY,
+                )
+            }.onSuccess { cards ->
+                updateState { it.copy(recentBuyCards = cards) }
+            }.onFailure {
+                setError(it.message ?: "Failed to load recent buy requests")
             }
         }
     }

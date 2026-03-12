@@ -31,6 +31,11 @@ data class MarketPlaceCard(
     val fromPrice: Double?,
 )
 
+enum class MarketPlaceOfferType {
+    SELL,
+    BUY,
+}
+
 data class MarketPlaceSeller(
     val uid: String,
     val displayName: String,

@@ -2,7 +2,6 @@ package mtg.app.feature.trade.presentation.utils
 
 import android.app.Application
 import android.content.Context
-import android.net.Uri
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -57,8 +56,7 @@ internal class DeleteCollectionWorker(
         val idToken = inputData.getString(KEY_ID_TOKEN)?.trim().orEmpty()
         if (uid.isBlank() || idToken.isBlank()) return Result.failure()
 
-        val encodedUid = Uri.encode(uid)
-        val endpoint = "${BackendEnvironment.primaryBaseUrl}/v1/bridge/users/$encodedUid/collection"
+        val endpoint = "${BackendEnvironment.primaryBaseUrl}/v1/users/me/collection"
 
         val connection = (URL(endpoint).openConnection() as? HttpURLConnection) ?: return Result.retry()
         return try {
@@ -68,6 +66,7 @@ internal class DeleteCollectionWorker(
             connection.connectTimeout = 20_000
             connection.readTimeout = 20_000
             connection.doInput = true
+            connection.setRequestProperty("Authorization", "Bearer $idToken")
             connection.connect()
 
             val code = connection.responseCode

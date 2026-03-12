@@ -7,11 +7,13 @@ class LoadRecentMarketPlaceCardsUseCase(
         idToken: String,
         viewerUid: String,
         limit: Int,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard> {
         return repository.loadRecentMarketPlaceCards(
             idToken = idToken,
             viewerUid = viewerUid,
             limit = limit,
+            offerType = offerType,
         )
     }
 }

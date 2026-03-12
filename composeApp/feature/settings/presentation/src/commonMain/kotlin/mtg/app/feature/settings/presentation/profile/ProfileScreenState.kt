@@ -22,6 +22,7 @@ data class ProfileScreenState(
 
     // Change password modal
     val isChangePasswordModalVisible: Boolean = false,
+    val currentPasswordInput: String = "",
     val newPasswordInput: String = "",
     val confirmPasswordInput: String = "",
     val passwordError: String? = null,

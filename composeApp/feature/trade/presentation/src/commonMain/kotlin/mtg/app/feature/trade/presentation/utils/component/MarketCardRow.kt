@@ -24,14 +24,21 @@ import mtg.app.feature.trade.domain.MarketPlaceCard
 @Composable
 fun MarketCardRow(
     card: MarketPlaceCard,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
+    pricePrefix: String = "From",
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape = AppTheme.shapes.small)
             .background(color = AppTheme.colors.gray200)
-            .clickable(onClick = onClick)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
             .border(
                 width = 1.dp,
                 color = AppTheme.colors.black,
@@ -62,7 +69,7 @@ fun MarketCardRow(
             }
 
             Text(
-                text = "From ${card.fromPrice?.let { "$$it" } ?: "-"}",
+                text = "$pricePrefix ${card.fromPrice?.let { "$$it" } ?: "-"}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )

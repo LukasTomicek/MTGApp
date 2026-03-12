@@ -2,25 +2,26 @@ package mtg.app.feature.chat.infrastructure.service
 
 import mtg.app.core.domain.config.BackendEnvironment
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
-import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPath
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -30,9 +31,10 @@ class DefaultMessagesService(
     private val tradeBackendBaseUrl = BackendEnvironment.primaryBaseUrl
 
     override suspend fun listUserMatches(uid: String, idToken: String): JsonObject {
-        val user = uid.encodeURLPath()
-        println("TradeBE: calling /v1/bridge/users/$uid/matches")
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/users/$user/matches")
+        println("TradeBE: calling /v1/users/me/matches")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/users/me/matches") {
+            withBearer(idToken)
+        }
         val json = response.bodyAsText().trim()
         return if (json == "null" || json.isBlank()) JsonObject(emptyMap()) else {
             Json.parseToJsonElement(json) as? JsonObject ?: JsonObject(emptyMap())
@@ -40,8 +42,10 @@ class DefaultMessagesService(
     }
 
     override suspend fun listChats(idToken: String): JsonObject {
-        println("TradeBE: calling /v1/bridge/chats")
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/chats")
+        println("TradeBE: calling /v1/chats")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/chats") {
+            withBearer(idToken)
+        }
         val json = response.bodyAsText().trim()
         return if (json == "null" || json.isBlank()) JsonObject(emptyMap()) else {
             Json.parseToJsonElement(json) as? JsonObject ?: JsonObject(emptyMap())
@@ -50,8 +54,10 @@ class DefaultMessagesService(
 
     override suspend fun listMarketplaceSellEntriesByUser(uid: String, idToken: String): JsonObject {
         val user = uid.encodeURLPath()
-        println("TradeBE: calling /v1/bridge/market/sell-offers/$uid")
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/market/sell-offers/$user")
+        println("TradeBE: calling /v1/users/$uid/sell-offers")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/users/$user/sell-offers") {
+            withBearer(idToken)
+        }
         val json = response.bodyAsText().trim()
         return if (json == "null" || json.isBlank()) JsonObject(emptyMap()) else {
             Json.parseToJsonElement(json) as? JsonObject ?: JsonObject(emptyMap())
@@ -60,8 +66,10 @@ class DefaultMessagesService(
 
     override suspend fun getChatMeta(chatId: String, idToken: String): JsonObject? {
         val id = chatId.encodeURLPath()
-        println("TradeBE: calling /v1/bridge/chats/$chatId/meta")
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/chats/$id/meta")
+        println("TradeBE: calling /v1/chats/$chatId")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/chats/$id") {
+            withBearer(idToken)
+        }
         if (response.status.value == 404) return null
         val json = response.bodyAsText().trim()
         if (json == "null" || json.isBlank()) return null
@@ -75,18 +83,19 @@ class DefaultMessagesService(
         counterpartUid: String,
     ) {
         val encodedChatId = chatId.encodeURLPath()
-        println("TradeBE: calling /v1/bridge/chats/$chatId/thread DELETE")
-        val response = httpClient.delete("$tradeBackendBaseUrl/v1/bridge/chats/$encodedChatId/thread") {
-            parameter("uid", uid)
-            parameter("counterpartUid", counterpartUid)
+        println("TradeBE: calling DELETE /v1/chats/$chatId")
+        val response = httpClient.delete("$tradeBackendBaseUrl/v1/chats/$encodedChatId") {
+            withBearer(idToken)
         }
         ensureSuccess(response, "delete chat thread")
     }
 
     override suspend fun listChatMessages(chatId: String, idToken: String): JsonObject {
         val id = chatId.encodeURLPath()
-        println("TradeBE: calling /v1/bridge/chats/$chatId/messages")
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/chats/$id/messages")
+        println("TradeBE: calling /v1/chats/$chatId/messages")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/chats/$id/messages") {
+            withBearer(idToken)
+        }
         val json = response.bodyAsText().trim()
         return if (json == "null" || json.isBlank()) JsonObject(emptyMap()) else {
             Json.parseToJsonElement(json) as? JsonObject ?: JsonObject(emptyMap())
@@ -113,42 +122,30 @@ class DefaultMessagesService(
             .ifBlank { senderEmail.trim().ifBlank { uid } }
         val encodedChatId = chatId.encodeURLPath()
 
-        println("TradeBE: calling /v1/bridge/chats/$chatId/messages/send")
+        println("TradeBE: calling /v1/chats/$chatId/messages")
         val response = runCatching {
-            httpClient.post("$tradeBackendBaseUrl/v1/bridge/chats/$encodedChatId/messages/send") {
+            httpClient.post("$tradeBackendBaseUrl/v1/chats/$encodedChatId/messages") {
+                withBearer(idToken)
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
-                        put("uid", uid)
                         put("senderDisplayName", senderDisplayName)
                         put("text", normalizedText)
                     }
                 )
             }
         }.onFailure { throwable ->
-            println("TradeBE: POST /messages/send failed before response. chatId=$chatId error=${throwable.message}")
+            println("TradeBE: POST /messages failed before response. chatId=$chatId error=${throwable.message}")
         }.getOrElse { throw it }
-        println("TradeBE: /messages/send response status=${response.status.value} chatId=$chatId")
+        println("TradeBE: /messages response status=${response.status.value} chatId=$chatId")
         ensureSuccess(response, "send message")
-        println("TradeBE: /messages/send success chatId=$chatId")
+        println("TradeBE: /messages success chatId=$chatId")
     }
 
     override suspend fun loadUserNickname(
         uid: String,
         idToken: String,
     ): String? {
-        val queryResponse = runCatching {
-            httpClient.get("$tradeBackendBaseUrl/v1/users/profile") {
-                parameter("userId", uid)
-            }
-        }.getOrNull()
-        if (queryResponse?.status?.isSuccess() == true) {
-            val queryBody = queryResponse.bodyAsText().trim()
-            val root = runCatching { Json.parseToJsonElement(queryBody) as? JsonObject }.getOrNull()
-            val nickname = root.stringOrNull("nickname")
-            if (!nickname.isNullOrBlank()) return nickname
-        }
-
         val pathUid = uid.encodeURLPath()
         val pathResponse = runCatching {
             httpClient.get("$tradeBackendBaseUrl/v1/users/profile/$pathUid")
@@ -168,7 +165,8 @@ class DefaultMessagesService(
         }
 
         val encodedChatId = chatId.encodeURLPath()
-        val response = httpClient.patch("$tradeBackendBaseUrl/v1/bridge/chats/$encodedChatId/meta") {
+        val response = httpClient.patch("$tradeBackendBaseUrl/v1/chats/$encodedChatId") {
+            withBearer(idToken)
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
@@ -188,8 +186,6 @@ class DefaultMessagesService(
             ?: throw IllegalStateException("Chat not found")
         val buyerUid = meta.getString("buyerUid").orEmpty()
         val sellerUid = meta.getString("sellerUid").orEmpty()
-        val cardId = meta.getString("cardId").orEmpty()
-        val cardName = meta.getString("cardName").orEmpty()
         if (uid != buyerUid && uid != sellerUid) {
             throw IllegalStateException("Only chat participants can confirm deal")
         }
@@ -211,7 +207,8 @@ class DefaultMessagesService(
             if (uid != sellerUid) {
                 throw IllegalStateException("Only seller can confirm reserved deal")
             }
-            val confirmResponse = httpClient.patch("$tradeBackendBaseUrl/v1/bridge/chats/$encodedChatId/meta") {
+            val confirmResponse = httpClient.patch("$tradeBackendBaseUrl/v1/chats/$encodedChatId") {
+                withBearer(idToken)
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -236,7 +233,8 @@ class DefaultMessagesService(
         val shouldFinalize = markBuyerCompleted && markSellerCompleted
         val completeStatus = if (shouldFinalize) "COMPLETED" else "PROPOSED"
 
-        val completeResponse = httpClient.patch("$tradeBackendBaseUrl/v1/bridge/chats/$encodedChatId/meta") {
+        val completeResponse = httpClient.patch("$tradeBackendBaseUrl/v1/chats/$encodedChatId") {
+            withBearer(idToken)
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
@@ -254,24 +252,13 @@ class DefaultMessagesService(
             )
         }
         ensureSuccess(completeResponse, "complete deal")
-
-        if (!shouldFinalize) return
-
-        runCatching {
-            removeSellerOffersForCard(
-                httpClient = httpClient,
-                tradeBackendBaseUrl = tradeBackendBaseUrl,
-                sellerUid = sellerUid,
-                cardId = cardId,
-                cardName = cardName,
-            )
-        }
     }
 
     override suspend fun hasRatedChat(uid: String, chatId: String, idToken: String): Boolean {
-        val user = uid.encodeURLPath()
         val chat = chatId.encodeURLPath()
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/users/$user/ratings/given/$chat")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/users/me/ratings/given/$chat") {
+            withBearer(idToken)
+        }
         val body = response.bodyAsText().trim()
         val root = runCatching { Json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return false
         return (root["exists"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() == true
@@ -279,77 +266,35 @@ class DefaultMessagesService(
 
     override suspend fun loadUserReceivedRatings(uid: String, idToken: String): JsonObject {
         val user = uid.encodeURLPath()
-        val response = httpClient.get("$tradeBackendBaseUrl/v1/bridge/users/$user/ratings/received")
+        val response = httpClient.get("$tradeBackendBaseUrl/v1/users/$user/ratings") {
+            withBearer(idToken)
+        }
         val json = response.bodyAsText().trim()
         return if (json == "null" || json.isBlank()) JsonObject(emptyMap()) else {
             Json.parseToJsonElement(json) as? JsonObject ?: JsonObject(emptyMap())
         }
     }
 
-    override suspend fun saveGivenRating(uid: String, chatId: String, idToken: String, payload: JsonObject) {
-        val user = uid.encodeURLPath()
-        val chat = chatId.encodeURLPath()
-        val response = httpClient.put("$tradeBackendBaseUrl/v1/bridge/users/$user/ratings/given/$chat") {
-            contentType(ContentType.Application.Json)
-            setBody(payload)
-        }
-        ensureSuccess(response, "save given rating")
-    }
-
-    override suspend fun saveReceivedRating(
+    override suspend fun submitRating(
+        chatId: String,
+        idToken: String,
         ratedUid: String,
-        ratingId: String,
-        idToken: String,
-        payload: JsonObject,
+        score: Int,
+        comment: String,
     ) {
-        val rated = ratedUid.encodeURLPath()
-        val id = ratingId.encodeURLPath()
-        val response = httpClient.put("$tradeBackendBaseUrl/v1/bridge/users/$rated/ratings/received/$id") {
-            contentType(ContentType.Application.Json)
-            setBody(payload)
-        }
-        ensureSuccess(response, "save received rating")
-    }
-
-    override suspend fun updateUserProfileRating(
-        uid: String,
-        idToken: String,
-        average: Double,
-        count: Int,
-    ) {
-        val user = uid.encodeURLPath()
-        val response = httpClient.put("$tradeBackendBaseUrl/v1/bridge/users/$user/profile/rating") {
+        val encodedChatId = chatId.encodeURLPath()
+        val response = httpClient.post("$tradeBackendBaseUrl/v1/chats/$encodedChatId/ratings") {
+            withBearer(idToken)
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
-                    put("average", average)
-                    put("count", count)
+                    put("ratedUid", ratedUid)
+                    put("score", score)
+                    put("comment", comment)
                 }
             )
         }
-        ensureSuccess(response, "update user profile rating")
-    }
-
-    private suspend fun deleteChatNotifications(uid: String, chatId: String, idToken: String) {
-        val user = uid.encodeURLPath()
-        val notificationsResponse = httpClient.get("$tradeBackendBaseUrl/v1/bridge/users/$user/notifications")
-        if (!notificationsResponse.status.isSuccess()) return
-
-        val notificationsRaw = notificationsResponse.bodyAsText().trim()
-        val notifications = if (notificationsRaw == "null" || notificationsRaw.isBlank()) {
-            JsonObject(emptyMap())
-        } else {
-            Json.parseToJsonElement(notificationsRaw) as? JsonObject ?: JsonObject(emptyMap())
-        }
-
-        notifications.entries.forEach { (notificationId, element) ->
-            val notification = element as? JsonObject ?: return@forEach
-            val notificationChatId = (notification["chatId"] as? JsonPrimitive)?.content.orEmpty()
-            if (notificationChatId != chatId) return@forEach
-            runCatching {
-                httpClient.delete("$tradeBackendBaseUrl/v1/bridge/users/$user/notifications/${notificationId.encodeURLPath()}")
-            }
-        }
+        ensureSuccess(response, "submit rating")
     }
 }
 
@@ -364,40 +309,8 @@ private suspend fun ensureSuccess(response: HttpResponse, action: String) {
     }
 }
 
-private suspend fun removeSellerOffersForCard(
-    httpClient: HttpClient,
-    tradeBackendBaseUrl: String,
-    sellerUid: String,
-    cardId: String,
-    cardName: String,
-) {
-    val response = httpClient.get("$tradeBackendBaseUrl/v1/offers") {
-        parameter("userId", sellerUid)
-        parameter("type", "SELL")
-    }
-    ensureSuccess(response, "load seller offers before cleanup")
-
-    val raw = response.bodyAsText().trim()
-    val items = runCatching { Json.parseToJsonElement(raw) as? JsonArray }.getOrNull().orEmpty()
-    val targetCardId = cardId.trim()
-    val targetCardName = cardName.trim()
-
-    items.forEach { element ->
-        val obj = element as? JsonObject ?: return@forEach
-        val offerId = (obj["id"] as? JsonPrimitive)?.content?.trim().orEmpty()
-        if (offerId.isBlank()) return@forEach
-
-        val offerCardId = (obj["cardId"] as? JsonPrimitive)?.content?.trim().orEmpty()
-        val offerCardName = (obj["cardName"] as? JsonPrimitive)?.content?.trim().orEmpty()
-        val matchesCard = when {
-            targetCardId.isNotBlank() -> offerCardId.equals(targetCardId, ignoreCase = true)
-            else -> offerCardName.equals(targetCardName, ignoreCase = true)
-        }
-        if (!matchesCard) return@forEach
-
-        val deleteResponse = httpClient.delete("$tradeBackendBaseUrl/v1/offers/${offerId.encodeURLPath()}")
-        ensureSuccess(deleteResponse, "remove seller offer after completed deal")
-    }
+private fun HttpRequestBuilder.withBearer(idToken: String) {
+    header(HttpHeaders.Authorization, "Bearer $idToken")
 }
 
 private fun JsonObject?.getString(key: String): String? {

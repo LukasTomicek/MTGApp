@@ -9,6 +9,7 @@ sealed interface ProfileUiEvent : Event {
     data object ChangeNicknameConfirmed : ProfileUiEvent
     data object ChangePasswordClicked : ProfileUiEvent
     data object ChangePasswordDismissed : ProfileUiEvent
+    data class CurrentPasswordChanged(val value: String) : ProfileUiEvent
     data class NewPasswordChanged(val value: String) : ProfileUiEvent
     data class ConfirmPasswordChanged(val value: String) : ProfileUiEvent
     data object ChangePasswordConfirmed : ProfileUiEvent

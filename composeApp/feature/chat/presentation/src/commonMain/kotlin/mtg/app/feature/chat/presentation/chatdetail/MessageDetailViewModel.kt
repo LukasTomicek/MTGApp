@@ -4,7 +4,6 @@ import mtg.app.core.presentation.BaseViewModel
 import mtg.app.feature.auth.domain.ObserveAuthStateUseCase
 import mtg.app.feature.chat.domain.ConfirmDealUseCase
 import mtg.app.feature.chat.domain.DealStatus
-import mtg.app.feature.chat.domain.DeleteChatThreadUseCase
 import mtg.app.feature.chat.domain.HasRatedChatUseCase
 import mtg.app.feature.chat.domain.LoadChatMessagesUseCase
 import mtg.app.feature.chat.domain.LoadChatMetaUseCase
@@ -23,7 +22,6 @@ class MessageDetailViewModel(
     private val sendChatMessage: SendChatMessageUseCase,
     private val proposeDealUseCase: ProposeDealUseCase,
     private val confirmDealUseCase: ConfirmDealUseCase,
-    private val deleteChatThreadUseCase: DeleteChatThreadUseCase,
     private val loadUserRatingSummary: LoadUserRatingSummaryUseCase,
     private val hasRatedChat: HasRatedChatUseCase,
     private val submitUserRating: SubmitUserRatingUseCase,
@@ -56,7 +54,7 @@ class MessageDetailViewModel(
             MessageDetailUiEvent.ConfirmDealClicked -> confirmDeal()
             MessageDetailUiEvent.RatingDismissed -> {
                 updateState { it.copy(isRatingModalVisible = false, ratingCommentDraft = "") }
-                closeCurrentThreadAndExit()
+                navigate(MessageDetailDirection.CloseChat)
             }
             is MessageDetailUiEvent.RatingScoreChanged -> {
                 updateState { it.copy(ratingScoreDraft = event.value.coerceIn(1, 5)) }
@@ -260,37 +258,10 @@ class MessageDetailViewModel(
                         ratingCommentDraft = "",
                     )
                 }
-                closeCurrentThreadAndExit()
+                navigate(MessageDetailDirection.CloseChat)
             }.onFailure {
                 setError(it.message ?: "Failed to submit rating")
             }
-        }
-    }
-
-    private fun closeCurrentThreadAndExit() {
-        val uid = currentUid
-        val idToken = currentIdToken
-        val current = state.value.data
-        val chatId = current.chatId
-        val counterpartUid = current.counterpartUid
-
-        if (uid == null || idToken == null || chatId.isBlank() || counterpartUid.isBlank()) {
-            navigate(MessageDetailDirection.CloseChat)
-            return
-        }
-
-        launch {
-            runCatching {
-                deleteChatThreadUseCase(
-                    uid = uid,
-                    idToken = idToken,
-                    chatId = chatId,
-                    counterpartUid = counterpartUid,
-                )
-            }.onFailure {
-                setError(it.message ?: "Failed to close chat")
-            }
-            navigate(MessageDetailDirection.CloseChat)
         }
     }
 

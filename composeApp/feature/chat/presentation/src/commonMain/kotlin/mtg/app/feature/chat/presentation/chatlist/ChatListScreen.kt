@@ -22,6 +22,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,10 +35,24 @@ fun ChatListScreen(
     uiState: UiState<ChatListScreenState>,
     onUiEvent: (ChatListUiEvent) -> Unit,
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     DisposableEffect(Unit) {
         onUiEvent(ChatListUiEvent.ScreenOpened)
         onDispose {
             onUiEvent(ChatListUiEvent.ScreenClosed)
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onUiEvent(ChatListUiEvent.ReloadClicked)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

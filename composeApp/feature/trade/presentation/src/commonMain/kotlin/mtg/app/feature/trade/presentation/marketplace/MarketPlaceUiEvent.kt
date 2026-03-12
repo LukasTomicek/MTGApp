@@ -6,6 +6,7 @@ import mtg.app.feature.map.presentation.map.MapCoordinate
 sealed interface MarketPlaceUiEvent : Event {
     data class SearchChanged(val value: String) : MarketPlaceUiEvent
     data object SearchSubmitted : MarketPlaceUiEvent
+    data object ToggleDisplayModeClicked : MarketPlaceUiEvent
     data object ScreenOpened : MarketPlaceUiEvent
     data class MarketCardClicked(
         val cardId: String,

@@ -1,27 +1,42 @@
 package mtg.app.feature.trade.infrastructure
 
 import mtg.app.feature.trade.data.TradeDataSource
-import mtg.app.feature.trade.data.toStoredTradeEntriesByUserFromMarketplace
 import mtg.app.feature.trade.data.toStoredMapPins
-import mtg.app.feature.trade.data.toStoredMapPinsByUserFromMarketplace
 import mtg.app.feature.trade.data.toStoredTradeEntries
 import mtg.app.feature.trade.data.toCards
 import mtg.app.feature.trade.data.toDefaultCardsBulkUrl
 import mtg.app.feature.trade.domain.TradeFilter
 import mtg.app.feature.trade.domain.MtgCard
 import mtg.app.feature.trade.domain.MarketPlaceCard
+import mtg.app.feature.trade.domain.MarketPlaceOfferType
 import mtg.app.feature.trade.domain.MarketPlaceSeller
 import mtg.app.feature.trade.domain.StoredMapPin
 import mtg.app.feature.trade.domain.StoredTradeCardEntry
-import mtg.app.feature.trade.domain.TradeChatRoom
-import mtg.app.feature.trade.domain.TradeMatchNotification
 import mtg.app.feature.trade.domain.TradeListType
-import mtg.app.feature.trade.domain.TradeUserMatch
 import mtg.app.feature.trade.infrastructure.service.TradeService
 
 class ScryfallTradeDataSource(
     private val service: TradeService,
 ) : TradeDataSource {
+    override suspend fun ensureMarketPlaceChat(
+        idToken: String,
+        buyerUid: String,
+        buyerEmail: String,
+        sellerUid: String,
+        sellerEmail: String,
+        cardId: String,
+        cardName: String,
+    ): String {
+        return service.ensureMarketPlaceChat(
+            idToken = idToken,
+            buyerUid = buyerUid,
+            buyerEmail = buyerEmail,
+            sellerUid = sellerUid,
+            sellerEmail = sellerEmail,
+            cardId = cardId,
+            cardName = cardName,
+        )
+    }
 
     override suspend fun searchCards(query: String, filter: TradeFilter): List<MtgCard> {
         val searchQuery = buildSearchQuery(query = query, filter = filter)
@@ -70,10 +85,12 @@ class ScryfallTradeDataSource(
 
     override suspend fun listEntriesFromBackend(
         uid: String,
+        idToken: String,
         listType: TradeListType,
     ): List<StoredTradeCardEntry> {
         return service.listEntriesFromBackend(
             uid = uid,
+            idToken = idToken,
             listType = listType,
         )
     }
@@ -108,119 +125,23 @@ class ScryfallTradeDataSource(
 
     override suspend fun replaceEntriesInBackend(
         uid: String,
+        idToken: String,
         listType: TradeListType,
         entries: List<StoredTradeCardEntry>,
     ) {
         service.replaceEntriesInBackend(
             uid = uid,
+            idToken = idToken,
             listType = listType,
             entries = entries,
         )
     }
 
-    override suspend fun replaceMarketplaceUserSellEntries(
-        uid: String,
-        idToken: String,
-        entries: List<StoredTradeCardEntry>,
-    ) {
-        service.replaceMarketplaceUserSellEntries(
-            uid = uid,
+    override suspend fun syncMatchNotifications(idToken: String, listType: TradeListType?) {
+        service.syncMatchNotifications(
             idToken = idToken,
-            entries = entries,
+            listType = listType,
         )
-    }
-
-    override suspend fun replaceMarketplaceUserBuyEntries(
-        uid: String,
-        idToken: String,
-        entries: List<StoredTradeCardEntry>,
-    ) {
-        service.replaceMarketplaceUserBuyEntries(
-            uid = uid,
-            idToken = idToken,
-            entries = entries,
-        )
-    }
-
-    override suspend fun listMarketplaceSellEntriesByUser(idToken: String): Map<String, List<StoredTradeCardEntry>> {
-        return service.listMarketplaceSellEntriesByUser(idToken = idToken).toStoredTradeEntriesByUserFromMarketplace()
-    }
-
-    override suspend fun listMarketplaceBuyEntriesByUser(idToken: String): Map<String, List<StoredTradeCardEntry>> {
-        return service.listMarketplaceBuyEntries(idToken = idToken).toStoredTradeEntriesByUserFromMarketplace()
-    }
-
-    override suspend fun listUnavailableSellerMarketKeys(idToken: String): Set<String> {
-        val chats = service.listChats(idToken = idToken)
-        if (chats.isEmpty()) return emptySet()
-
-        return chats.values.mapNotNull { node ->
-            val chatRoot = node as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
-            val meta = chatRoot["meta"] as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
-            val status = (meta["dealStatus"] as? kotlinx.serialization.json.JsonPrimitive)?.content.orEmpty()
-            if (!status.equals("PROPOSED", ignoreCase = true) &&
-                !status.equals("COMPLETED", ignoreCase = true)
-            ) {
-                return@mapNotNull null
-            }
-            val sellerUid = (meta["sellerUid"] as? kotlinx.serialization.json.JsonPrimitive)?.content
-                ?.trim()
-                .orEmpty()
-            if (sellerUid.isBlank()) return@mapNotNull null
-
-            val cardId = (meta["cardId"] as? kotlinx.serialization.json.JsonPrimitive)?.content
-                ?.trim()
-                .orEmpty()
-            val cardName = (meta["cardName"] as? kotlinx.serialization.json.JsonPrimitive)?.content
-                ?.trim()
-                .orEmpty()
-
-            val marketKey = if (cardId.isNotBlank()) {
-                "id:${cardId.lowercase()}"
-            } else {
-                "name:${cardName.lowercase()}"
-            }
-            "${sellerUid.lowercase()}|$marketKey"
-        }.toSet()
-    }
-
-    override suspend fun upsertUserNotification(
-        uid: String,
-        idToken: String,
-        notification: TradeMatchNotification,
-    ) {
-        service.upsertUserNotification(
-            uid = uid,
-            idToken = idToken,
-            notification = notification,
-        )
-    }
-
-    override suspend fun upsertUserMatch(
-        uid: String,
-        idToken: String,
-        match: TradeUserMatch,
-    ) {
-        service.upsertUserMatch(
-            uid = uid,
-            idToken = idToken,
-            match = match,
-        )
-    }
-
-    override suspend fun upsertChatRoom(idToken: String, room: TradeChatRoom) {
-        service.upsertChatRoom(
-            idToken = idToken,
-            room = room,
-        )
-    }
-
-    override suspend fun listUserMatches(uid: String, idToken: String): List<TradeUserMatch> {
-        return service.listUserMatches(uid = uid, idToken = idToken)
-    }
-
-    override suspend fun loadUserNickname(uid: String, idToken: String): String? {
-        return service.loadUserNickname(uid = uid, idToken = idToken)
     }
 
     override suspend fun listMapPins(uid: String, idToken: String): List<StoredMapPin> {
@@ -231,40 +152,42 @@ class ScryfallTradeDataSource(
         service.replaceUserMapPins(uid = uid, idToken = idToken, pins = pins)
     }
 
-    override suspend fun replaceMarketplaceMapPins(uid: String, idToken: String, pins: List<StoredMapPin>) {
-        service.replaceMarketplaceMapPins(uid = uid, idToken = idToken, pins = pins)
-    }
-
-    override suspend fun listMarketplaceMapPinsByUser(idToken: String): Map<String, List<StoredMapPin>> {
-        return service.listMarketplaceMapPins(idToken = idToken).toStoredMapPinsByUserFromMarketplace()
-    }
-
     override suspend fun searchMarketPlaceCardsFromBackend(
+        idToken: String,
         viewerUid: String,
         query: String,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard> {
         return service.searchMarketPlaceCardsFromBackend(
+            idToken = idToken,
             viewerUid = viewerUid,
             query = query,
+            offerType = offerType,
         )
     }
 
     override suspend fun loadRecentMarketPlaceCardsFromBackend(
+        idToken: String,
         viewerUid: String,
         limit: Int,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard> {
         return service.loadRecentMarketPlaceCardsFromBackend(
+            idToken = idToken,
             viewerUid = viewerUid,
             limit = limit,
+            offerType = offerType,
         )
     }
 
     override suspend fun loadMarketPlaceSellersFromBackend(
+        idToken: String,
         viewerUid: String,
         cardId: String,
         cardName: String,
     ): List<MarketPlaceSeller> {
         return service.loadMarketPlaceSellersFromBackend(
+            idToken = idToken,
             viewerUid = viewerUid,
             cardId = cardId,
             cardName = cardName,

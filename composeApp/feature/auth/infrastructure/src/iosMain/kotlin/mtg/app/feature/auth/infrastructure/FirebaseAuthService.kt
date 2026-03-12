@@ -51,7 +51,17 @@ actual class FirebaseAuthService actual constructor(
         )
     }
 
-    override suspend fun changePassword(newPassword: String, idToken: String) {
+    override suspend fun changePassword(
+        email: String,
+        currentPassword: String,
+        newPassword: String,
+        idToken: String,
+    ) {
+        authenticate(
+            endpoint = "accounts:signInWithPassword",
+            email = email,
+            password = currentPassword,
+        )
         post(
             endpoint = "accounts:update",
             payload = buildJsonObject {

@@ -29,11 +29,13 @@ interface TradeRepository {
         idToken: String,
         viewerUid: String,
         query: String,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard>
     suspend fun loadRecentMarketPlaceCards(
         idToken: String,
         viewerUid: String,
         limit: Int,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard>
     suspend fun loadMarketPlaceSellers(
         idToken: String,

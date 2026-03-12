@@ -21,17 +21,11 @@ interface MessagesService {
     suspend fun confirmDeal(uid: String, chatId: String, idToken: String)
     suspend fun hasRatedChat(uid: String, chatId: String, idToken: String): Boolean
     suspend fun loadUserReceivedRatings(uid: String, idToken: String): JsonObject
-    suspend fun saveGivenRating(uid: String, chatId: String, idToken: String, payload: JsonObject)
-    suspend fun saveReceivedRating(
+    suspend fun submitRating(
+        chatId: String,
+        idToken: String,
         ratedUid: String,
-        ratingId: String,
-        idToken: String,
-        payload: JsonObject,
-    )
-    suspend fun updateUserProfileRating(
-        uid: String,
-        idToken: String,
-        average: Double,
-        count: Int,
+        score: Int,
+        comment: String,
     )
 }

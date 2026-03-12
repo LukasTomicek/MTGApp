@@ -1,8 +1,12 @@
 package mtg.app.feature.auth.infrastructure
 
+import android.util.Log
 import mtg.app.feature.auth.domain.AuthUser
 import com.google.android.gms.tasks.Task
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.AuthResult
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -19,6 +23,10 @@ actual class FirebaseAuthService actual constructor(
     private val httpClient: HttpClient,
     private val firebaseWebApiKey: String,
 ) : AuthService {
+    private companion object {
+        const val TAG = "TradeAuth"
+    }
+
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
     override suspend fun restoreCurrentUser(): AuthUser? {
@@ -36,6 +44,7 @@ actual class FirebaseAuthService actual constructor(
             val result = firebaseAuth.signInWithEmailAndPassword(email.trim(), password).awaitTask()
             result.toAuthUser()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "signIn", throwable = throwable, email = email)
             error(mapFirebaseError(throwable))
         }
     }
@@ -45,6 +54,7 @@ actual class FirebaseAuthService actual constructor(
             val result = firebaseAuth.createUserWithEmailAndPassword(email.trim(), password).awaitTask()
             result.toAuthUser()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "signUp", throwable = throwable, email = email)
             error(mapFirebaseError(throwable))
         }
     }
@@ -55,6 +65,7 @@ actual class FirebaseAuthService actual constructor(
             val result = firebaseAuth.signInWithCredential(credential).awaitTask()
             result.toAuthUser()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "signInWithGoogleIdToken", throwable = throwable)
             error(mapFirebaseError(throwable))
         }
     }
@@ -63,15 +74,24 @@ actual class FirebaseAuthService actual constructor(
         runCatching {
             firebaseAuth.sendPasswordResetEmail(email.trim()).awaitTask()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "sendPasswordReset", throwable = throwable, email = email)
             error(mapFirebaseError(throwable))
         }
     }
 
-    override suspend fun changePassword(newPassword: String, idToken: String) {
+    override suspend fun changePassword(
+        email: String,
+        currentPassword: String,
+        newPassword: String,
+        idToken: String,
+    ) {
         val currentUser = firebaseAuth.currentUser ?: error("No signed in user")
         runCatching {
+            val credential = EmailAuthProvider.getCredential(email.trim(), currentPassword)
+            currentUser.reauthenticate(credential).awaitTask()
             currentUser.updatePassword(newPassword).awaitTask()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "changePassword", throwable = throwable)
             error(mapFirebaseError(throwable))
         }
     }
@@ -81,6 +101,7 @@ actual class FirebaseAuthService actual constructor(
         runCatching {
             currentUser.delete().awaitTask()
         }.getOrElse { throwable ->
+            logFirebaseFailure(operation = "deleteAccount", throwable = throwable)
             error(mapFirebaseError(throwable))
         }
     }
@@ -106,8 +127,33 @@ actual class FirebaseAuthService actual constructor(
             is FirebaseAuthInvalidUserException -> "User not found"
             is FirebaseAuthWeakPasswordException -> "Password must have at least 6 characters"
             is FirebaseAuthRecentLoginRequiredException -> "For delete account, sign in again first"
+            is FirebaseTooManyRequestsException -> "Too many attempts, try again later"
+            is FirebaseNetworkException -> "Network error"
             else -> throwable.message ?: "Authentication failed"
         }
+    }
+
+    private fun logFirebaseFailure(
+        operation: String,
+        throwable: Throwable,
+        email: String? = null,
+    ) {
+        val emailLabel = email?.trim().orEmpty()
+        val detail = buildString {
+            append("operation=").append(operation)
+            if (emailLabel.isNotBlank()) {
+                append(", email=").append(emailLabel)
+            }
+            append(", type=").append(throwable::class.qualifiedName)
+            append(", message=").append(throwable.message.orEmpty())
+            if (throwable is FirebaseAuthInvalidCredentialsException) {
+                append(", errorCode=").append(throwable.errorCode)
+            }
+            if (throwable is FirebaseAuthInvalidUserException) {
+                append(", errorCode=").append(throwable.errorCode)
+            }
+        }
+        Log.e(TAG, detail, throwable)
     }
 }
 

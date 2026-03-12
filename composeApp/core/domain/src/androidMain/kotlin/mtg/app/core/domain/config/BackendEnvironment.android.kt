@@ -1,15 +1,15 @@
 package mtg.app.core.domain.config
 
-import mtg.app.core.domain.BuildConfig
+import android.content.pm.ApplicationInfo
 
 actual object BackendEnvironment {
     // Update this before first production rollout.
-    private const val PROD_BASE_URL = "https://api.mtglocaltrade.com"
+    private const val PROD_BASE_URL = "https://mtgapp-backend.onrender.com"
     private const val DEV_DEVICE_BASE_URL = "http://192.168.1.13:8080"
     private const val DEV_EMULATOR_BASE_URL = "http://10.0.2.2:8080"
 
     actual val mode: BackendMode
-        get() = if (BuildConfig.DEBUG) BackendMode.DEV else BackendMode.PRODUCTION
+        get() = if (isDebuggableBuild()) BackendMode.DEV else BackendMode.PRODUCTION
 
     actual val primaryBaseUrl: String
         get() = when (mode) {
@@ -40,5 +40,15 @@ actual object BackendEnvironment {
             ?: if (baseUrl.startsWith("https://")) 443 else 80
         return host to port
     }
-}
 
+    private fun isDebuggableBuild(): Boolean {
+        return runCatching {
+            val activityThreadClass = Class.forName("android.app.ActivityThread")
+            val currentApplication = activityThreadClass
+                .getMethod("currentApplication")
+                .invoke(null) as? android.app.Application
+            val flags = currentApplication?.applicationInfo?.flags ?: 0
+            (flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        }.getOrDefault(false)
+    }
+}

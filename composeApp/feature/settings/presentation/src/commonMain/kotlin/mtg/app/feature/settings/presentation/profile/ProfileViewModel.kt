@@ -60,11 +60,16 @@ class ProfileViewModel(
                 updateState {
                     it.copy(
                         isChangePasswordModalVisible = false,
+                        currentPasswordInput = "",
                         newPasswordInput = "",
                         confirmPasswordInput = "",
                         passwordError = null,
                     )
                 }
+            }
+
+            is ProfileUiEvent.CurrentPasswordChanged -> {
+                updateState { it.copy(currentPasswordInput = event.value, passwordError = null) }
             }
 
             is ProfileUiEvent.NewPasswordChanged -> {
@@ -199,9 +204,14 @@ class ProfileViewModel(
         }
 
         val stateData = state.value.data
+        val currentPassword = stateData.currentPasswordInput
         val newPassword = stateData.newPasswordInput.trim()
         val confirmPassword = stateData.confirmPasswordInput.trim()
 
+        if (currentPassword.isBlank()) {
+            updateState { it.copy(passwordError = "Current password is required") }
+            return
+        }
         if (newPassword.isBlank()) {
             updateState { it.copy(passwordError = "Password is required") }
             return
@@ -221,11 +231,15 @@ class ProfileViewModel(
             updateState { it.copy(passwordError = null, infoMessage = "") }
 
             runCatching {
-                changePasswordUseCase(newPassword = newPassword)
+                changePasswordUseCase(
+                    currentPassword = currentPassword,
+                    newPassword = newPassword,
+                )
             }.onSuccess {
                 updateState {
                     it.copy(
                         isChangePasswordModalVisible = false,
+                        currentPasswordInput = "",
                         newPasswordInput = "",
                         confirmPasswordInput = "",
                         passwordError = null,

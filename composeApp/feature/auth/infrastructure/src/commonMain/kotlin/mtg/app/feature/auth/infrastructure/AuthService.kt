@@ -8,7 +8,12 @@ interface AuthService {
     suspend fun signUp(email: String, password: String): AuthUser
     suspend fun signInWithGoogleIdToken(idToken: String): AuthUser
     suspend fun sendPasswordReset(email: String)
-    suspend fun changePassword(newPassword: String, idToken: String)
+    suspend fun changePassword(
+        email: String,
+        currentPassword: String,
+        newPassword: String,
+        idToken: String,
+    )
     suspend fun deleteAccount(idToken: String)
     suspend fun signOut()
 }

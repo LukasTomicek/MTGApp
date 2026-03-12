@@ -336,7 +336,7 @@ private fun HomeScreenWithBottomNav(
                 showBackButton = showBackButton,
                 showNotificationButton = destinationRoute == Route.Trade.value || destinationRoute == Route.Messages.value,
                 hasUnreadNotifications = notificationsBadgeState.data.hasUnread,
-                showProfileButton = currentRoute == Route.Settings || (isChatDetailRoute && chatDetailCounterpartUid.isNotBlank()),
+                showProfileButton = isChatDetailRoute && chatDetailCounterpartUid.isNotBlank(),
                 onBackClick = {
                     val handled = handleTopBarBack?.invoke() == true
                     if (!handled) {

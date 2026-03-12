@@ -2,12 +2,14 @@ package mtg.app.feature.welcome.infrastructure.service
 
 import mtg.app.core.domain.config.BackendEnvironment
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
+import io.ktor.client.request.header
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPath
 import io.ktor.http.isSuccess
@@ -23,13 +25,12 @@ class DefaultWelcomeService(
     private val tradeBackendBaseUrls = listOf(BackendEnvironment.primaryBaseUrl) + BackendEnvironment.fallbackBaseUrls
 
     override suspend fun loadNickname(uid: String, idToken: String): String? {
+        val user = uid.encodeURLPath()
         val response = getWithBaseFallback(
-            endpointLabel = "/v1/users/profile",
+            endpointLabel = "/v1/users/profile/$uid",
             uid = uid,
         ) { baseUrl ->
-            httpClient.get("$baseUrl/v1/users/profile") {
-                parameter("userId", uid)
-            }
+            httpClient.get("$baseUrl/v1/users/profile/$user")
         }
         if (!response.status.isSuccess()) return null
 
@@ -47,14 +48,14 @@ class DefaultWelcomeService(
         }
 
         val response = putWithBaseFallback(
-            endpointLabel = "/v1/users/profile",
+            endpointLabel = "/v1/users/me/profile",
             uid = uid,
         ) { baseUrl ->
-            httpClient.put("$baseUrl/v1/users/profile") {
+            httpClient.put("$baseUrl/v1/users/me/profile") {
+                withBearer(idToken)
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
-                        put("userId", uid)
                         put("nickname", trimmedNickname)
                     }
                 )
@@ -68,12 +69,13 @@ class DefaultWelcomeService(
     }
 
     override suspend fun loadOnboardingCompleted(uid: String, idToken: String): Boolean {
-        val user = uid.encodeURLPath()
         val response = getWithBaseFallback(
-            endpointLabel = "/v1/bridge/users/$uid/profile/onboarding",
+            endpointLabel = "/v1/users/me/onboarding",
             uid = uid,
         ) { baseUrl ->
-            httpClient.get("$baseUrl/v1/bridge/users/$user/profile/onboarding")
+            httpClient.get("$baseUrl/v1/users/me/onboarding") {
+                withBearer(idToken)
+            }
         }
         if (!response.status.isSuccess()) return false
 
@@ -82,12 +84,12 @@ class DefaultWelcomeService(
     }
 
     override suspend fun saveOnboardingCompleted(uid: String, idToken: String, completed: Boolean) {
-        val user = uid.encodeURLPath()
         val response = putWithBaseFallback(
-            endpointLabel = "/v1/bridge/users/$uid/profile/onboarding",
+            endpointLabel = "/v1/users/me/onboarding",
             uid = uid,
         ) { baseUrl ->
-            httpClient.put("$baseUrl/v1/bridge/users/$user/profile/onboarding") {
+            httpClient.put("$baseUrl/v1/users/me/onboarding") {
+                withBearer(idToken)
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -158,4 +160,8 @@ class DefaultWelcomeService(
         }
         throw lastError ?: IllegalStateException("Backend unavailable")
     }
+}
+
+private fun HttpRequestBuilder.withBearer(idToken: String) {
+    header(HttpHeaders.Authorization, "Bearer $idToken")
 }

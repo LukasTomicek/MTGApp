@@ -2,11 +2,9 @@ package mtg.app.feature.trade.infrastructure.service
 
 import mtg.app.feature.trade.domain.StoredTradeCardEntry
 import mtg.app.feature.trade.domain.StoredMapPin
-import mtg.app.feature.trade.domain.TradeChatRoom
-import mtg.app.feature.trade.domain.TradeMatchNotification
 import mtg.app.feature.trade.domain.TradeListType
-import mtg.app.feature.trade.domain.TradeUserMatch
 import mtg.app.feature.trade.domain.MarketPlaceCard
+import mtg.app.feature.trade.domain.MarketPlaceOfferType
 import mtg.app.feature.trade.domain.MarketPlaceSeller
 import kotlinx.serialization.json.JsonObject
 
@@ -15,6 +13,15 @@ interface TradeService {
     suspend fun findCardsByNames(names: List<String>): JsonObject
     suspend fun searchCardPrints(cardName: String): JsonObject
     suspend fun fetchBulkData(): JsonObject
+    suspend fun ensureMarketPlaceChat(
+        idToken: String,
+        buyerUid: String,
+        buyerEmail: String,
+        sellerUid: String,
+        sellerEmail: String,
+        cardId: String,
+        cardName: String,
+    ): String
     suspend fun listEntries(
         uid: String,
         idToken: String,
@@ -22,6 +29,7 @@ interface TradeService {
     ): JsonObject
     suspend fun listEntriesFromBackend(
         uid: String,
+        idToken: String,
         listType: TradeListType,
     ): List<StoredTradeCardEntry>
     suspend fun upsertEntry(
@@ -38,51 +46,30 @@ interface TradeService {
     )
     suspend fun replaceEntriesInBackend(
         uid: String,
+        idToken: String,
         listType: TradeListType,
         entries: List<StoredTradeCardEntry>,
     )
-    suspend fun replaceMarketplaceUserSellEntries(
-        uid: String,
+    suspend fun syncMatchNotifications(
         idToken: String,
-        entries: List<StoredTradeCardEntry>,
+        listType: TradeListType? = null,
     )
-    suspend fun replaceMarketplaceUserBuyEntries(
-        uid: String,
-        idToken: String,
-        entries: List<StoredTradeCardEntry>,
-    )
-    suspend fun listMarketplaceSellEntriesByUser(idToken: String): JsonObject
-    suspend fun listMarketplaceBuyEntries(idToken: String): JsonObject
-    suspend fun listChats(idToken: String): JsonObject
-    suspend fun upsertUserNotification(
-        uid: String,
-        idToken: String,
-        notification: TradeMatchNotification,
-    )
-    suspend fun upsertUserMatch(
-        uid: String,
-        idToken: String,
-        match: TradeUserMatch,
-    )
-    suspend fun upsertChatRoom(
-        idToken: String,
-        room: TradeChatRoom,
-    )
-    suspend fun listUserMatches(uid: String, idToken: String): List<TradeUserMatch>
-    suspend fun loadUserNickname(uid: String, idToken: String): String?
     suspend fun listMapPins(uid: String, idToken: String): JsonObject
     suspend fun replaceUserMapPins(uid: String, idToken: String, pins: List<StoredMapPin>)
-    suspend fun replaceMarketplaceMapPins(uid: String, idToken: String, pins: List<StoredMapPin>)
-    suspend fun listMarketplaceMapPins(idToken: String): JsonObject
     suspend fun searchMarketPlaceCardsFromBackend(
+        idToken: String,
         viewerUid: String,
         query: String,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard>
     suspend fun loadRecentMarketPlaceCardsFromBackend(
+        idToken: String,
         viewerUid: String,
         limit: Int,
+        offerType: MarketPlaceOfferType,
     ): List<MarketPlaceCard>
     suspend fun loadMarketPlaceSellersFromBackend(
+        idToken: String,
         viewerUid: String,
         cardId: String,
         cardName: String,

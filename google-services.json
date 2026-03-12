@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "556672052935-j58hj25lu5953fd1t31u12mf2kdkfkjb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "mtg.app",
+            "certificate_hash": "e319edf877b00189ff2b203c0ff1d84ad18e3ae5"
+          }
+        },
+        {
           "client_id": "556672052935-hl8bgjs1lf87v87sagdn7p77qv4ffc91.apps.googleusercontent.com",
           "client_type": 3
         }
