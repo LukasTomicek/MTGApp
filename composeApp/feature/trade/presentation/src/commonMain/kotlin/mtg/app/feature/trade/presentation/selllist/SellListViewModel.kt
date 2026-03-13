@@ -487,8 +487,13 @@ class SellListViewModel(
         }
 
         persistJob?.cancel()
-        persistJob = launch {
-            runCatching {
+        persistJob = domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to sync sell list")
+            },
+            action = {
                 tradeService.replaceListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.SELL_LIST,
@@ -496,18 +501,13 @@ class SellListViewModel(
                     actorEmail = currentUserEmail,
                 )
                 lastPersistedSignature = signature
-            }.onFailure {
-                setError(it.message ?: "Failed to sync sell list")
-            }
-        }
+            },
+        )
     }
 
     private fun loadPersistedEntries(uid: String, idToken: String) {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
+        domainCall(
+            action = {
                 val persistedEntries = tradeService.loadListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.SELL_LIST,
@@ -521,40 +521,41 @@ class SellListViewModel(
                 if (pendingWithGeneratedIds.isNotEmpty()) {
                     sellListTransferStore.markConsumed(pendingWithGeneratedIds.size)
                 }
-
-                nextEntryNumber = nextEntryNumber(entries)
-                lastPersistedSignature = entriesSignature(entries)
-                updateState {
-                    it.copy(
-                        collectionEntries = entries,
-                        visibleCollectionEntries = entries,
-                        selectedCollectionEntryId = entries.firstOrNull()?.entryId,
-                        infoMessage = if (entries.isEmpty()) {
-                            "Sell list is empty"
-                        } else if (pendingWithGeneratedIds.isNotEmpty()) {
-                            "Loaded ${entries.size} items (${pendingWithGeneratedIds.size} from Collection)"
-                        } else {
-                            "Loaded ${entries.size} items"
-                        },
-                    )
-                }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Failed to load sell list")
-            } finally {
-                setLoading(false)
+                SellLoadSnapshot(entries, pendingWithGeneratedIds.size)
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load sell list")
+            },
+        ) { snapshot ->
+            nextEntryNumber = nextEntryNumber(snapshot.entries)
+            lastPersistedSignature = entriesSignature(snapshot.entries)
+            updateState {
+                it.copy(
+                    collectionEntries = snapshot.entries,
+                    visibleCollectionEntries = snapshot.entries,
+                    selectedCollectionEntryId = snapshot.entries.firstOrNull()?.entryId,
+                    infoMessage = if (snapshot.entries.isEmpty()) {
+                        "Sell list is empty"
+                    } else if (snapshot.transferredCount > 0) {
+                        "Loaded ${snapshot.entries.size} items (${snapshot.transferredCount} from Collection)"
+                    } else {
+                        "Loaded ${snapshot.entries.size} items"
+                    },
+                )
             }
         }
     }
 
     private fun refreshMapPinsPresence(uid: String, idToken: String) {
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { hasMapPins = null },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
-            }.onFailure {
-                hasMapPins = null
-            }
         }
     }
 
@@ -562,17 +563,18 @@ class SellListViewModel(
         if (hasMapPins != null) return
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { hasMapPins = null },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
                 if (pins.isEmpty() && state.value.data.isAddMode) {
                     updateState { it.copy(showPinRecommendationDialog = true) }
                 }
-            }.onFailure {
-                hasMapPins = null
-            }
         }
     }
 
@@ -599,8 +601,18 @@ class SellListViewModel(
             return
         }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                updateState {
+                    it.copy(
+                        showPinRecommendationDialog = false,
+                        infoMessage = throwable.message ?: "Failed to save map pin",
+                    )
+                }
+            },
+            action = {
                 val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextMapPinNumber(existing) + 1}",
@@ -614,7 +626,8 @@ class SellListViewModel(
                     actorEmail = currentUserEmail,
                     triggerRematch = true,
                 )
-            }.onSuccess {
+            },
+        ) {
                 hasMapPins = true
                 updateState {
                     it.copy(
@@ -622,17 +635,14 @@ class SellListViewModel(
                         infoMessage = "Current location saved as map pin",
                     )
                 }
-            }.onFailure { throwable ->
-                updateState {
-                    it.copy(
-                        showPinRecommendationDialog = false,
-                        infoMessage = throwable.message ?: "Failed to save map pin",
-                    )
-                }
-            }
         }
     }
 }
+
+private data class SellLoadSnapshot(
+    val entries: List<CollectionCardEntry>,
+    val transferredCount: Int,
+)
 
 private fun filterCollection(
     entries: List<CollectionCardEntry>,

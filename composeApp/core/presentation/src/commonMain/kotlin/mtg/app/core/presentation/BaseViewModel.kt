@@ -1,6 +1,7 @@
 package mtg.app.core.presentation
 
 import mtg.app.core.presentation.state.UiState
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,6 +45,31 @@ abstract class BaseViewModel<S : Any, E : Event, D : Direction>(initialState: S)
 
     protected fun launch(block: suspend CoroutineScope.() -> Unit): Job {
         return scope.launch(block = block)
+    }
+
+    protected fun <T> domainCall(
+        loading: ((Boolean) -> Unit)? = { setLoading(it) },
+        clearErrorOnStart: Boolean = true,
+        onError: (Throwable) -> Unit = { throwable ->
+            setError(throwable.message ?: "Operation failed")
+        },
+        action: suspend () -> T,
+        onSuccess: suspend (T) -> Unit = {},
+    ): Job = launch {
+        if (clearErrorOnStart) {
+            setError(null)
+        }
+        loading?.invoke(true)
+        try {
+            val result = action()
+            onSuccess(result)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            onError(exception)
+        } finally {
+            loading?.invoke(false)
+        }
     }
 
     fun clear() {

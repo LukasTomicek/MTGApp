@@ -75,10 +75,8 @@ class MessageDetailViewModel(
         val currentUser = currentUid
         if (chatId.isBlank()) return
 
-        launch {
-            setLoading(true)
-            setError(null)
-            runCatching {
+        domainCall(
+            action = {
                 val authContext = AuthContext(uid = currentUser.orEmpty(), idToken = idToken)
                 val meta = chatService.loadChatMeta(context = authContext, chatId = chatId)
                 val messages = chatService.loadChatMessages(
@@ -111,7 +109,11 @@ class MessageDetailViewModel(
                     false
                 }
                 ReloadSnapshot(meta, messages, summary, counterpartUid, alreadyRated)
-            }.onSuccess { snapshot ->
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load chat")
+            },
+        ) { snapshot ->
                 updateState { current ->
                     val shouldAutoOpenRating =
                         snapshot.meta?.dealStatus == DealStatus.COMPLETED &&
@@ -144,10 +146,6 @@ class MessageDetailViewModel(
                 if (snapshot.meta?.dealStatus == DealStatus.COMPLETED) {
                     stopPolling()
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to load chat")
-            }
-            setLoading(false)
         }
     }
 
@@ -163,7 +161,10 @@ class MessageDetailViewModel(
         val text = state.value.data.input.trim()
         if (chatId.isBlank() || text.isBlank()) return
 
-        launch {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
             updateState { current ->
                 current.copy(
                     input = "",
@@ -176,18 +177,18 @@ class MessageDetailViewModel(
                     ),
                 )
             }
-            runCatching {
                 chatService.sendMessage(
                     context = AuthContext(uid = uid, idToken = idToken),
                     request = SendChatMessageRequest(chatId = chatId, senderEmail = senderEmail, text = text),
                 )
-            }.onSuccess {
-                setError(null)
-                reload()
-            }.onFailure {
+            },
+            onError = {
                 setError(it.message ?: "Failed to send message")
                 reload()
-            }
+            },
+        ) {
+                setError(null)
+                reload()
         }
     }
 
@@ -197,17 +198,20 @@ class MessageDetailViewModel(
         val chatId = state.value.data.chatId
         if (chatId.isBlank()) return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
                 chatService.proposeDeal(
                     context = AuthContext(uid = uid, idToken = idToken),
                     chatId = chatId,
                 )
-            }.onSuccess {
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to propose deal")
+            },
+        ) {
                 reload()
-            }.onFailure {
-                setError(it.message ?: "Failed to propose deal")
-            }
         }
     }
 
@@ -217,17 +221,20 @@ class MessageDetailViewModel(
         val chatId = state.value.data.chatId
         if (chatId.isBlank()) return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
                 chatService.confirmDeal(
                     context = AuthContext(uid = uid, idToken = idToken),
                     chatId = chatId,
                 )
-            }.onSuccess {
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to confirm deal")
+            },
+        ) {
                 reload()
-            }.onFailure {
-                setError(it.message ?: "Failed to confirm deal")
-            }
         }
     }
 
@@ -245,8 +252,10 @@ class MessageDetailViewModel(
         }
         if (current.chatId.isBlank() || current.counterpartUid.isBlank()) return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
                 chatService.submitRating(
                     context = AuthContext(uid = raterUid, idToken = idToken),
                     request = SubmitChatRatingRequest(
@@ -256,7 +265,11 @@ class MessageDetailViewModel(
                         comment = current.ratingCommentDraft.trim(),
                     ),
                 )
-            }.onSuccess {
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to submit rating")
+            },
+        ) {
                 updateState {
                     it.copy(
                         isRatingModalVisible = false,
@@ -264,9 +277,6 @@ class MessageDetailViewModel(
                     )
                 }
                 navigate(MessageDetailDirection.CloseChat)
-            }.onFailure {
-                setError(it.message ?: "Failed to submit rating")
-            }
         }
     }
 

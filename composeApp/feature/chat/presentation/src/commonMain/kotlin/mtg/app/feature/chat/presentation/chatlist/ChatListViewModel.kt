@@ -44,22 +44,18 @@ class ChatListViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            setLoading(true)
-            setError(null)
-            runCatching {
-                chatService.loadThreads(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { threads ->
+        domainCall(
+            action = { chatService.loadThreads(context = AuthContext(uid = uid, idToken = idToken)) },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load chats")
+            },
+        ) { threads ->
                 updateState {
                     it.copy(
                         items = threads,
                         infoMessage = if (threads.isEmpty()) "No chats yet" else "",
                     )
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to load chats")
-            }
-            setLoading(false)
         }
     }
 
@@ -67,15 +63,17 @@ class ChatListViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            setLoading(true)
-            setError(null)
-            runCatching {
+        domainCall(
+            action = {
                 chatService.deleteThread(
                     context = AuthContext(uid = uid, idToken = idToken),
                     request = DeleteChatThreadRequest(chatId = chatId, counterpartUid = counterpartUid),
                 )
-            }.onSuccess {
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to delete chat")
+            },
+        ) {
                 updateState { state ->
                     val updatedItems = state.items.filterNot { it.chatId == chatId }
                     state.copy(
@@ -83,10 +81,6 @@ class ChatListViewModel(
                         infoMessage = if (updatedItems.isEmpty()) "No chats yet" else state.infoMessage,
                     )
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to delete chat")
-            }
-            setLoading(false)
         }
     }
 }

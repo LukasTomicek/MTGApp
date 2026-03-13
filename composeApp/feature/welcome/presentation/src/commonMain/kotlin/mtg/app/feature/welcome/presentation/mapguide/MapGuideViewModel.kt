@@ -51,11 +51,8 @@ class MapGuideViewModel(
             return
         }
 
-        launch {
-            setLoading(true)
-            setError(null)
-
-            runCatching {
+        domainCall(
+            action = {
                 val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextPinNumber(existing) + 1}",
@@ -69,13 +66,12 @@ class MapGuideViewModel(
                     actorEmail = currentEmail,
                     triggerRematch = true,
                 )
-            }.onSuccess {
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to save map pin")
+            },
+        ) {
                 updateState { it.copy(infoMessage = "Current location saved as default map pin") }
-            }.onFailure {
-                setError(it.message ?: "Failed to save map pin")
-            }
-
-            setLoading(false)
         }
     }
 }

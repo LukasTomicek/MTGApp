@@ -51,9 +51,12 @@ class SetupProfileViewModel(
                     return@collect
                 }
 
-                runCatching {
-                    welcomeService.loadNickname(uid = user.uid)
-                }.onSuccess { nickname ->
+                domainCall(
+                    loading = null,
+                    clearErrorOnStart = false,
+                    onError = {},
+                    action = { welcomeService.loadNickname(uid = user.uid) },
+                ) { nickname ->
                     if (!nickname.isNullOrBlank()) {
                         updateState {
                             it.copy(
@@ -82,9 +85,19 @@ class SetupProfileViewModel(
             return
         }
 
-        launch {
-            updateState { it.copy(isSavingNickname = true, nicknameError = null) }
-            runCatching {
+        domainCall(
+            loading = { isLoading ->
+                updateState { it.copy(isSavingNickname = isLoading, nicknameError = null) }
+            },
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                updateState {
+                    it.copy(
+                        nicknameError = throwable.message ?: "Failed to save nickname",
+                    )
+                }
+            },
+            action = {
                 val context = AuthContext(uid = uid, idToken = idToken)
                 welcomeService.saveNickname(
                     context = context,
@@ -94,17 +107,9 @@ class SetupProfileViewModel(
                     context = context,
                     completed = true,
                 )
-            }.onSuccess {
-                updateState { it.copy(isSavingNickname = false) }
+            },
+        ) {
                 navigate(SetupProfileDirection.NavigateToHome)
-            }.onFailure { throwable ->
-                updateState {
-                    it.copy(
-                        isSavingNickname = false,
-                        nicknameError = throwable.message ?: "Failed to save nickname",
-                    )
-                }
-            }
         }
     }
 }

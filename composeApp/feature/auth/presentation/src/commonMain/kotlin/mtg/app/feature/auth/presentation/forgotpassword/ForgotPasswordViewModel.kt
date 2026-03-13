@@ -18,24 +18,21 @@ class ForgotPasswordViewModel(
     }
 
     private fun submitReset() {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
+        domainCall(
+            action = {
                 val email = state.value.data.email.trim()
                 if (email.isBlank()) {
                     updateState { it.copy(infoMessage = "Email is required") }
-                    return@launch
+                    return@domainCall Unit
                 }
 
                 authService.sendPasswordReset(email = email)
-                updateState { it.copy(infoMessage = "Reset link sent to email") }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Password reset failed")
-            } finally {
-                setLoading(false)
-            }
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Password reset failed")
+            },
+        ) {
+            updateState { it.copy(infoMessage = "Reset link sent to email") }
         }
     }
 }

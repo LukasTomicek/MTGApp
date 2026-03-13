@@ -146,27 +146,32 @@ class MapViewModel(
             )
         }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to sync map pins")
+            },
+            action = {
                 tradeService.replaceMapPins(
                     context = AuthContext(uid = uid, idToken = idToken),
                     pins = pins,
                     actorEmail = email,
                     triggerRematch = true,
                 )
-            }.onFailure {
-                setError(it.message ?: "Failed to sync map pins")
-            }
-        }
+            },
+        )
     }
 
     private fun loadPersistedPins(uid: String, idToken: String) {
-        launch {
-            setLoading(true)
-            setError(null)
-            runCatching {
+        domainCall(
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { persisted ->
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load map pins")
+            },
+        ) { persisted ->
                 val pins = persisted.map {
                     MapPin(
                         id = it.pinId,
@@ -187,10 +192,6 @@ class MapViewModel(
                     actorEmail = currentEmail,
                     triggerRematch = false,
                 )
-            }.onFailure {
-                setError(it.message ?: "Failed to load map pins")
-            }
-            setLoading(false)
         }
     }
 }

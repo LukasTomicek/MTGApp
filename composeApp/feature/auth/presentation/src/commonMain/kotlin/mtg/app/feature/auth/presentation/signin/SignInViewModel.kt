@@ -33,45 +33,40 @@ class SignInViewModel(
     }
 
     private fun submit() {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
+        domainCall(
+            action = {
                 val email = state.value.data.email.trim()
                 val password = state.value.data.password
                 if (email.isBlank() || password.isBlank()) {
                     updateState { it.copy(infoMessage = "Email and password are required") }
-                    return@launch
+                    return@domainCall Unit
                 }
 
                 authService.signIn(email = email, password = password)
-                updateState { it.copy(infoMessage = "Signed in") }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Sign in failed")
-            } finally {
-                setLoading(false)
-            }
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Sign in failed")
+            },
+        ) {
+            updateState { it.copy(infoMessage = "Signed in") }
         }
     }
 
     private fun submitGoogle(idToken: String) {
-        launch {
-            setLoading(true)
-            setError(null)
-            try {
+        domainCall(
+            action = {
                 val normalizedToken = idToken.trim()
                 if (normalizedToken.isBlank()) {
                     setError("Missing Google token")
-                    return@launch
+                    return@domainCall Unit
                 }
                 authService.signInWithGoogleIdToken(idToken = normalizedToken)
-                updateState { it.copy(infoMessage = "Signed in with Google") }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Google sign in failed")
-            } finally {
-                setLoading(false)
-            }
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Google sign in failed")
+            },
+        ) {
+            updateState { it.copy(infoMessage = "Signed in with Google") }
         }
     }
 }

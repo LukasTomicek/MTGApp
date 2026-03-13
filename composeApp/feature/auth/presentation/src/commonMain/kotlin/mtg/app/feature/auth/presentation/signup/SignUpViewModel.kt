@@ -29,25 +29,22 @@ class SignUpViewModel(
     }
 
     private fun submit() {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
+        domainCall(
+            action = {
                 val email = state.value.data.email.trim()
                 val password = state.value.data.password
                 if (email.isBlank() || password.isBlank()) {
                     updateState { it.copy(infoMessage = "Email and password are required") }
-                    return@launch
+                    return@domainCall Unit
                 }
 
                 authService.signUp(email = email, password = password)
-                updateState { it.copy(infoMessage = "Account created") }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Sign up failed")
-            } finally {
-                setLoading(false)
-            }
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Sign up failed")
+            },
+        ) {
+            updateState { it.copy(infoMessage = "Account created") }
         }
     }
 }

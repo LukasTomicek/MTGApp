@@ -1,8 +1,6 @@
 package mtg.app.feature.chat.data.remote
 
-import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
-import io.ktor.http.isSuccess
 import mtg.app.core.data.remote.ApiCallHandler
 import mtg.app.core.domain.obj.AuthContext
 import mtg.app.feature.chat.data.MessagesDataSource
@@ -37,12 +35,10 @@ class DefaultRemoteMessagesDataSource(
     private val apiCallHandler: ApiCallHandler,
 ) : MessagesDataSource {
     override suspend fun loadUserNickname(uid: String): String? {
-        val response = apiCallHandler.backendRequest(
+        return apiCallHandler.apiRequestOrNull<NicknameResponseDto>(
             path = "/v1/users/profile/${uid}",
             requiresAuth = false,
-        )
-        if (!response.status.isSuccess()) return null
-        return response.body<NicknameResponseDto>().nickname
+        )?.nickname
             ?.trim()
             ?.takeUnless { it.isBlank() }
     }
@@ -120,13 +116,10 @@ class DefaultRemoteMessagesDataSource(
 
     override suspend fun loadChatMeta(context: AuthContext, chatId: String): ChatMeta? {
         println("TradeBE: calling /v1/chats/${chatId}")
-        val response = apiCallHandler.backendRequest(
+        return apiCallHandler.apiRequestOrNull<ChatMetaDto>(
             path = "/v1/chats/${chatId}",
             idToken = context.idToken,
-        )
-        if (response.status.value == 404) return null
-        apiCallHandler.requireSuccess(response, "GET /v1/chats/${chatId}")
-        return response.body<ChatMetaDto>().toDomain(fallbackChatId = chatId)
+        )?.toDomain(fallbackChatId = chatId)
     }
 
     override suspend fun loadChatMessages(context: AuthContext, chatId: String): List<ChatMessage> {
@@ -306,13 +299,10 @@ class DefaultRemoteMessagesDataSource(
 
     private suspend fun rawChatMeta(chatId: String, idToken: String): ChatMetaDto? {
         println("TradeBE: calling /v1/chats/$chatId")
-        val response = apiCallHandler.backendRequest(
+        return apiCallHandler.apiRequestOrNull(
             path = "/v1/chats/$chatId",
             idToken = idToken,
         )
-        if (response.status.value == 404) return null
-        apiCallHandler.requireSuccess(response, "GET /v1/chats/$chatId")
-        return response.body<ChatMetaDto>()
     }
 
     private suspend fun loadUserReceivedRatings(uid: String, idToken: String): Map<String, UserReviewDto> {

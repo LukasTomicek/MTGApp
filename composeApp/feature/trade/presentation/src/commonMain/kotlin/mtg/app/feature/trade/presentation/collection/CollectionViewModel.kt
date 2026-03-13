@@ -644,17 +644,20 @@ class CollectionViewModel(
         val idToken = currentIdToken ?: return
         val entries = state.value.data.collectionEntries.map { it.toStoredTradeCardEntry() }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to sync collection")
+            },
+            action = {
                 tradeService.replaceListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.COLLECTION,
                     entries = entries,
                 )
-            }.onFailure {
-                setError(it.message ?: "Failed to sync collection")
-            }
-        }
+            },
+        )
     }
 
     private suspend fun persistEntriesNow(entries: List<CollectionCardEntry>): Boolean {
@@ -701,33 +704,29 @@ class CollectionViewModel(
     }
 
     private fun loadPersistedEntries(uid: String, idToken: String) {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
-                val entries = tradeService.loadListEntries(
+        domainCall(
+            action = {
+                tradeService.loadListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.COLLECTION,
                 ).map { it.toCollectionCardEntry() }
-
-                nextEntryNumber = nextEntryNumber(entries)
-                updateState {
-                    it.copy(
-                        collectionEntries = entries,
-                        visibleCollectionEntries = entries,
-                        selectedCollectionEntryId = entries.firstOrNull()?.entryId,
-                        infoMessage = if (entries.isEmpty()) {
-                            "Collection is empty"
-                        } else {
-                            "Loaded ${entries.size} items"
-                        },
-                    )
-                }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Failed to load collection")
-            } finally {
-                setLoading(false)
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load collection")
+            },
+        ) { entries ->
+            nextEntryNumber = nextEntryNumber(entries)
+            updateState {
+                it.copy(
+                    collectionEntries = entries,
+                    visibleCollectionEntries = entries,
+                    selectedCollectionEntryId = entries.firstOrNull()?.entryId,
+                    infoMessage = if (entries.isEmpty()) {
+                        "Collection is empty"
+                    } else {
+                        "Loaded ${entries.size} items"
+                    },
+                )
             }
         }
     }

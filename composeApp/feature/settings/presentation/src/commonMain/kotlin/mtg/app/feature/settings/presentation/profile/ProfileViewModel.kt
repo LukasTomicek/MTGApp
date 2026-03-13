@@ -101,9 +101,19 @@ class ProfileViewModel(
                     return@collect
                 }
 
-                runCatching {
-                    welcomeService.loadNickname(uid = user.uid)
-                }.onSuccess { nickname ->
+                domainCall(
+                    loading = null,
+                    clearErrorOnStart = false,
+                    action = { welcomeService.loadNickname(uid = user.uid) },
+                    onError = { throwable ->
+                        updateState {
+                            it.copy(
+                                nicknameError = throwable.message ?: "Failed to load nickname",
+                                infoMessage = "",
+                            )
+                        }
+                    },
+                ) { nickname ->
                     updateState {
                         it.copy(
                             nickname = nickname?.trim().orEmpty(),
@@ -113,21 +123,26 @@ class ProfileViewModel(
                             reviewsError = null,
                         )
                     }
-                }.onFailure { throwable ->
-                    updateState {
-                        it.copy(
-                            nicknameError = throwable.message ?: "Failed to load nickname",
-                            infoMessage = "",
-                        )
-                    }
                 }
 
-                runCatching {
-                    chatService.loadUserReviews(
+                domainCall(
+                    loading = null,
+                    clearErrorOnStart = false,
+                    action = {
+                        chatService.loadUserReviews(
                         context = AuthContext(uid = user.uid, idToken = user.idToken),
                         uid = user.uid,
                     )
-                }.onSuccess { reviews ->
+                    },
+                    onError = { throwable ->
+                        updateState {
+                            it.copy(
+                                reviews = emptyList(),
+                                reviewsError = throwable.message ?: "Failed to load reviews",
+                            )
+                        }
+                    },
+                ) { reviews ->
                     updateState {
                         it.copy(
                             reviews = reviews.map { review ->
@@ -138,13 +153,6 @@ class ProfileViewModel(
                                 )
                             },
                             reviewsError = null,
-                        )
-                    }
-                }.onFailure { throwable ->
-                    updateState {
-                        it.copy(
-                            reviews = emptyList(),
-                            reviewsError = throwable.message ?: "Failed to load reviews",
                         )
                     }
                 }
@@ -167,17 +175,24 @@ class ProfileViewModel(
             return
         }
 
-        launch {
-            setLoading(true)
-            setError(null)
-            updateState { it.copy(nicknameError = null, infoMessage = "") }
-
-            runCatching {
+        domainCall(
+            clearErrorOnStart = true,
+            onError = { throwable ->
+                updateState {
+                    it.copy(
+                        nicknameError = throwable.message ?: "Failed to save nickname",
+                        infoMessage = "",
+                    )
+                }
+            },
+            action = {
+                updateState { it.copy(nicknameError = null, infoMessage = "") }
                 welcomeService.saveNickname(
                     context = AuthContext(uid = uid, idToken = idToken),
                     nickname = nickname,
                 )
-            }.onSuccess {
+            },
+        ) {
                 updateState {
                     it.copy(
                         nickname = nickname,
@@ -186,16 +201,6 @@ class ProfileViewModel(
                         infoMessage = "Nickname updated",
                     )
                 }
-            }.onFailure { throwable ->
-                updateState {
-                    it.copy(
-                        nicknameError = throwable.message ?: "Failed to save nickname",
-                        infoMessage = "",
-                    )
-                }
-            }
-
-            setLoading(false)
         }
     }
 
@@ -228,17 +233,21 @@ class ProfileViewModel(
             return
         }
 
-        launch {
-            setLoading(true)
-            setError(null)
-            updateState { it.copy(passwordError = null, infoMessage = "") }
-
-            runCatching {
+        domainCall(
+            clearErrorOnStart = true,
+            onError = { throwable ->
+                updateState {
+                    it.copy(passwordError = throwable.message ?: "Failed to change password")
+                }
+            },
+            action = {
+                updateState { it.copy(passwordError = null, infoMessage = "") }
                 authService.changePassword(
                     currentPassword = currentPassword,
                     newPassword = newPassword,
                 )
-            }.onSuccess {
+            },
+        ) {
                 updateState {
                     it.copy(
                         isChangePasswordModalVisible = false,
@@ -249,13 +258,6 @@ class ProfileViewModel(
                         infoMessage = "Password updated",
                     )
                 }
-            }.onFailure { throwable ->
-                updateState {
-                    it.copy(passwordError = throwable.message ?: "Failed to change password")
-                }
-            }
-
-            setLoading(false)
         }
     }
 }

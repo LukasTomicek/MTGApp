@@ -169,8 +169,11 @@ class MarketPlaceViewModel(
         val idToken = currentIdToken ?: return
         val viewerUid = currentUid ?: return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable -> setError(throwable.message ?: "Failed to load recent cards") },
+            action = {
                 tradeService.loadRecentMarketPlaceCards(
                     context = AuthContext(uid = viewerUid, idToken = idToken),
                     query = MarketPlaceRecentCardsQuery(
@@ -178,15 +181,16 @@ class MarketPlaceViewModel(
                         offerType = MarketPlaceOfferType.SELL,
                     ),
                 )
-            }.onSuccess { cards ->
+            },
+        ) { cards ->
                 updateState { it.copy(recentSellCards = cards) }
-            }.onFailure {
-                setError(it.message ?: "Failed to load recent cards")
-            }
         }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable -> setError(throwable.message ?: "Failed to load recent buy requests") },
+            action = {
                 tradeService.loadRecentMarketPlaceCards(
                     context = AuthContext(uid = viewerUid, idToken = idToken),
                     query = MarketPlaceRecentCardsQuery(
@@ -194,11 +198,9 @@ class MarketPlaceViewModel(
                         offerType = MarketPlaceOfferType.BUY,
                     ),
                 )
-            }.onSuccess { cards ->
+            },
+        ) { cards ->
                 updateState { it.copy(recentBuyCards = cards) }
-            }.onFailure {
-                setError(it.message ?: "Failed to load recent buy requests")
-            }
         }
     }
 
@@ -206,9 +208,8 @@ class MarketPlaceViewModel(
         val idToken = currentIdToken ?: return
         val ownUid = currentUid ?: return
 
-        launch {
-            setLoading(true)
-            runCatching {
+        domainCall(
+            action = {
                 tradeService.loadMarketPlaceSellers(
                     context = AuthContext(uid = ownUid, idToken = idToken),
                     query = MarketPlaceSellersQuery(
@@ -216,7 +217,11 @@ class MarketPlaceViewModel(
                         cardName = cardName,
                     ),
                 )
-            }.onSuccess { sellers ->
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load sellers")
+            },
+        ) { sellers ->
                 val filtered = sellers.filter { it.uid != ownUid }
                 updateState {
                     it.copy(
@@ -227,10 +232,6 @@ class MarketPlaceViewModel(
                         showSellersDialog = true,
                     )
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to load sellers")
-            }
-            setLoading(false)
         }
     }
 
@@ -248,9 +249,8 @@ class MarketPlaceViewModel(
         val cardId = stateData.selectedCardId.orEmpty().ifBlank { stateData.selectedCardName }
         val cardName = stateData.selectedCardName.ifBlank { "Unknown card" }
 
-        launch {
-            setLoading(true)
-            runCatching {
+        domainCall(
+            action = {
                 tradeService.ensureMarketPlaceChat(
                     context = AuthContext(uid = buyerUid, idToken = idToken),
                     request = EnsureMarketPlaceChatRequest(
@@ -262,7 +262,11 @@ class MarketPlaceViewModel(
                         cardName = cardName,
                     ),
                 )
-            }.onSuccess { chatId ->
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to open chat")
+            },
+        ) { chatId ->
                 updateState {
                     it.copy(
                         showSellersDialog = false,
@@ -273,10 +277,6 @@ class MarketPlaceViewModel(
                     )
                 }
                 navigate(MarketPlaceDirection.NavigateToChat(chatId))
-            }.onFailure {
-                setError(it.message ?: "Failed to open chat")
-            }
-            setLoading(false)
         }
     }
 
@@ -295,20 +295,21 @@ class MarketPlaceViewModel(
     }
 
     private fun refreshMapPinsPresence(uid: String, idToken: String) {
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = {
+                hasMapPins = null
+                updateState { state -> state.copy(showPinRecommendationDialog = true) }
+            },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
                 updateState {
                     it.copy(showPinRecommendationDialog = pins.isEmpty())
                 }
-            }.onFailure {
-                hasMapPins = null
-                updateState {
-                    it.copy(showPinRecommendationDialog = true)
-                }
-            }
         }
     }
 
@@ -317,18 +318,21 @@ class MarketPlaceViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = {
+                hasMapPins = null
+                updateState { state -> state.copy(showPinRecommendationDialog = true) }
+            },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
                 if (pins.isEmpty()) {
                     updateState { it.copy(showPinRecommendationDialog = true) }
                 }
-            }.onFailure {
-                hasMapPins = null
-                updateState { it.copy(showPinRecommendationDialog = true) }
-            }
         }
     }
 
@@ -351,8 +355,13 @@ class MarketPlaceViewModel(
             return
         }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = {
+                updateState { state -> state.copy(showPinRecommendationDialog = false) }
+            },
+            action = {
                 val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextMapPinNumber(existing) + 1}",
@@ -366,13 +375,11 @@ class MarketPlaceViewModel(
                     actorEmail = currentEmail,
                     triggerRematch = true,
                 )
-            }.onSuccess {
+            },
+        ) {
                 hasMapPins = true
                 updateState { it.copy(showPinRecommendationDialog = false) }
                 loadInitialData()
-            }.onFailure {
-                updateState { it.copy(showPinRecommendationDialog = false) }
-            }
         }
     }
 }

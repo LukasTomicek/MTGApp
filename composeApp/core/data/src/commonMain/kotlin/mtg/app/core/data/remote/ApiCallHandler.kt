@@ -45,6 +45,28 @@ class ApiCallHandler(
         return parseResponse(response.bodyAsText())
     }
 
+    suspend inline fun <reified T> apiRequestOrNull(
+        path: String,
+        method: HttpMethod = HttpMethod.Get,
+        body: Any? = null,
+        idToken: String? = null,
+        requiresAuth: Boolean = true,
+        nullStatusCode: Int = 404,
+        noinline builder: HttpRequestBuilder.() -> Unit = {},
+    ): T? {
+        val response = backendRequest(
+            path = path,
+            method = method,
+            body = body,
+            idToken = idToken,
+            requiresAuth = requiresAuth,
+            builder = builder,
+        )
+        if (response.status.value == nullStatusCode) return null
+        requireSuccess(response = response, action = "$method $path")
+        return parseResponse(response.bodyAsText())
+    }
+
     suspend fun backendRequest(
         path: String,
         method: HttpMethod = HttpMethod.Get,
@@ -84,35 +106,6 @@ class ApiCallHandler(
         throw lastError ?: IllegalStateException("Backend unavailable")
     }
 
-    suspend fun backendGetObject(
-        path: String,
-        idToken: String? = null,
-        requiresAuth: Boolean = true,
-        builder: HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject {
-        return apiRequest(
-            path = path,
-            method = HttpMethod.Get,
-            idToken = idToken,
-            requiresAuth = requiresAuth,
-            builder = builder,
-        )
-    }
-
-    suspend fun backendGetArray(
-        path: String,
-        idToken: String? = null,
-        requiresAuth: Boolean = true,
-        builder: HttpRequestBuilder.() -> Unit = {},
-    ): JsonArray {
-        return apiRequest(
-            path = path,
-            method = HttpMethod.Get,
-            idToken = idToken,
-            requiresAuth = requiresAuth,
-            builder = builder,
-        )
-    }
 
     suspend fun requireSuccess(response: HttpResponse, action: String) {
         if (!response.status.isSuccess()) {

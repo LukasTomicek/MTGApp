@@ -116,19 +116,17 @@ class NotificationsViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            setLoading(true)
-            setError(null)
-            runCatching {
+        domainCall(
+            action = {
                 notificationsService.loadNotifications(
                     context = AuthContext(uid = uid, idToken = idToken),
                 )
-            }.onSuccess { items ->
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load notifications")
+            },
+        ) { items ->
                 updateState { it.copy(items = items) }
-            }.onFailure {
-                setError(it.message ?: "Failed to load notifications")
-            }
-            setLoading(false)
         }
     }
 
@@ -136,13 +134,19 @@ class NotificationsViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to mark notification as read")
+            },
+            action = {
                 notificationsService.markNotificationRead(
                     context = AuthContext(uid = uid, idToken = idToken),
                     notificationId = notificationId,
                 )
-            }.onSuccess {
+            },
+        ) {
                 updateState { state ->
                     state.copy(
                         items = state.items.map { item ->
@@ -150,9 +154,6 @@ class NotificationsViewModel(
                         }
                     )
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to mark notification as read")
-            }
         }
     }
 
@@ -160,19 +161,22 @@ class NotificationsViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to delete notification")
+            },
+            action = {
                 notificationsService.deleteNotification(
                     context = AuthContext(uid = uid, idToken = idToken),
                     notificationId = notificationId,
                 )
-            }.onSuccess {
+            },
+        ) {
                 updateState { state ->
                     state.copy(items = state.items.filterNot { it.id == notificationId })
                 }
-            }.onFailure {
-                setError(it.message ?: "Failed to delete notification")
-            }
         }
     }
 }

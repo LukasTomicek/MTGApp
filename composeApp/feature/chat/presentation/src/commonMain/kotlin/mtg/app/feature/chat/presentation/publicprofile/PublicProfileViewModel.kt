@@ -50,9 +50,8 @@ class PublicProfileViewModel(
     private fun load(targetUid: String) {
         val idToken = currentIdToken ?: return
 
-        launch {
-            setLoading(true)
-            setError(null)
+        domainCall(
+            action = {
             val context = AuthContext(uid = "", idToken = idToken)
 
             var hasError = false
@@ -87,20 +86,38 @@ class PublicProfileViewModel(
                 emptyList()
             }
 
-            updateState {
-                it.copy(
+                PublicProfileSnapshot(
                     targetUid = targetUid,
                     nickname = nickname,
-                    ratingAverage = summary.average,
-                    ratingCount = summary.count,
+                    summary = summary,
                     reviews = reviews,
                     sellOffers = sellOffers,
+                    hasPartialError = hasError,
+                )
+            },
+        ) { snapshot ->
+            updateState {
+                it.copy(
+                    targetUid = snapshot.targetUid,
+                    nickname = snapshot.nickname,
+                    ratingAverage = snapshot.summary.average,
+                    ratingCount = snapshot.summary.count,
+                    reviews = snapshot.reviews,
+                    sellOffers = snapshot.sellOffers,
                 )
             }
-            if (hasError) {
+            if (snapshot.hasPartialError) {
                 setError("Some profile data could not be loaded")
             }
-            setLoading(false)
         }
     }
 }
+
+private data class PublicProfileSnapshot(
+    val targetUid: String,
+    val nickname: String,
+    val summary: UserRatingSummary,
+    val reviews: List<mtg.app.feature.chat.domain.UserReview>,
+    val sellOffers: List<mtg.app.feature.chat.domain.UserSellOffer>,
+    val hasPartialError: Boolean,
+)

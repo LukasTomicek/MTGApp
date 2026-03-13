@@ -459,8 +459,13 @@ class BuyListViewModel(
         }
 
         persistJob?.cancel()
-        persistJob = launch {
-            runCatching {
+        persistJob = domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to sync buy list")
+            },
+            action = {
                 tradeService.replaceListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.BUY_LIST,
@@ -468,23 +473,23 @@ class BuyListViewModel(
                     actorEmail = currentUserEmail,
                 )
                 lastPersistedSignature = signature
-            }.onFailure {
-                setError(it.message ?: "Failed to sync buy list")
-            }
-        }
+            },
+        )
     }
 
     private fun loadPersistedEntries(uid: String, idToken: String) {
-        launch {
-            setLoading(true)
-            setError(null)
-
-            try {
+        domainCall(
+            action = {
                 val entries = tradeService.loadListEntries(
                     context = AuthContext(uid = uid, idToken = idToken),
                     listType = TradeListType.BUY_LIST,
                 ).map { it.toCollectionCardEntry() }
-
+                entries
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to load buy list")
+            },
+        ) { entries ->
                 nextEntryNumber = nextEntryNumber(entries)
                 lastPersistedSignature = entriesSignature(entries)
                 updateState {
@@ -499,23 +504,19 @@ class BuyListViewModel(
                         },
                     )
                 }
-            } catch (e: Throwable) {
-                setError(e.message ?: "Failed to load buy list")
-            } finally {
-                setLoading(false)
-            }
         }
     }
 
     private fun refreshMapPinsPresence(uid: String, idToken: String) {
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { hasMapPins = null },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
-            }.onFailure {
-                hasMapPins = null
-            }
         }
     }
 
@@ -523,17 +524,18 @@ class BuyListViewModel(
         if (hasMapPins != null) return
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { hasMapPins = null },
+            action = {
                 tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
-            }.onSuccess { pins ->
+            },
+        ) { pins ->
                 hasMapPins = pins.isNotEmpty()
                 if (pins.isEmpty() && state.value.data.isAddMode) {
                     updateState { it.copy(showPinRecommendationDialog = true) }
                 }
-            }.onFailure {
-                hasMapPins = null
-            }
         }
     }
 
@@ -560,8 +562,18 @@ class BuyListViewModel(
             return
         }
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = { throwable ->
+                updateState {
+                    it.copy(
+                        showPinRecommendationDialog = false,
+                        infoMessage = throwable.message ?: "Failed to save map pin",
+                    )
+                }
+            },
+            action = {
                 val existing = tradeService.loadMapPins(context = AuthContext(uid = uid, idToken = idToken))
                 val nextPin = StoredMapPin(
                     pinId = "pin-${nextMapPinNumber(existing) + 1}",
@@ -575,7 +587,8 @@ class BuyListViewModel(
                     actorEmail = currentUserEmail,
                     triggerRematch = true,
                 )
-            }.onSuccess {
+            },
+        ) {
                 hasMapPins = true
                 updateState {
                     it.copy(
@@ -583,14 +596,6 @@ class BuyListViewModel(
                         infoMessage = "Current location saved as map pin",
                     )
                 }
-            }.onFailure { throwable ->
-                updateState {
-                    it.copy(
-                        showPinRecommendationDialog = false,
-                        infoMessage = throwable.message ?: "Failed to save map pin",
-                    )
-                }
-            }
         }
     }
 }

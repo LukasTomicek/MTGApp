@@ -38,14 +38,17 @@ class NotificationsBadgeViewModel(
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
 
-        launch {
-            runCatching {
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            onError = {},
+            action = {
                 notificationsService.hasUnreadNotifications(
                     context = AuthContext(uid = uid, idToken = idToken),
                 )
-            }.onSuccess { hasUnread ->
+            },
+        ) { hasUnread ->
                 updateState { it.copy(hasUnread = hasUnread) }
-            }
         }
     }
 }
