@@ -21,8 +21,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.composeApp.core.domain)
+            api(projects.composeApp.core.domain)
         }
     }
 }
-

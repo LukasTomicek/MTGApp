@@ -16,6 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -25,7 +26,17 @@ import androidx.compose.ui.unit.dp
 fun ProfileScreen(
     uiState: UiState<ProfileScreenState>,
     onUiEvent: (ProfileUiEvent) -> Unit,
+    onConfirmCreditsPurchase: suspend (mtg.app.feature.settings.domain.obj.ConfirmCreditsPurchaseRequest) -> Unit = {},
 ) {
+    val creditsPurchaseRequester = rememberCreditsPurchaseRequester(
+        onPurchaseConfirmed = onConfirmCreditsPurchase,
+        onError = { onUiEvent(ProfileUiEvent.CreditsPurchaseFailed(it)) },
+    )
+
+    LaunchedEffect(creditsPurchaseRequester) {
+        creditsPurchaseRequester.recoverPendingPurchases()
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -39,6 +50,47 @@ fun ProfileScreen(
                 text = "Nickname: ${uiState.data.nickname.ifBlank { "-" }}",
                 style = MaterialTheme.typography.bodyLarge,
             )
+        }
+
+        item {
+            Text(
+                modifier = Modifier.padding(top = 8.dp),
+                text = "Credits: ${uiState.data.credits}",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+
+        item {
+            Text(
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                text = "Buy credits",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        items(uiState.data.creditProducts, key = { it.productId }) { product ->
+            AppButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                state = AppButtonState(
+                    title = TextState(product.label),
+                    enabled = !uiState.isLoading,
+                    onClick = { creditsPurchaseRequester.launch(product) },
+                ),
+            )
+        }
+
+        uiState.data.creditsError?.takeIf { it.isNotBlank() }?.let { error ->
+            item {
+                Text(
+                    modifier = Modifier.padding(top = 4.dp),
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
 
         uiState.data.nicknameError?.takeIf { it.isNotBlank() }?.let { error ->

@@ -24,15 +24,19 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.composeApp.core.presentation)
-            implementation(projects.composeApp.feature.auth.domain)
-            implementation(projects.composeApp.feature.chat.domain)
-            implementation(projects.composeApp.feature.settings.domain)
-            implementation(projects.composeApp.feature.welcome.domain)
+            api(projects.composeApp.feature.auth.domain)
+            api(projects.composeApp.feature.chat.domain)
+            api(projects.composeApp.feature.settings.domain)
+            api(projects.composeApp.feature.welcome.domain)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
+        }
+
+        androidMain.dependencies {
+            implementation(libs.billing.ktx)
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlin.math.round
 
 @Composable
 fun MessageDetailScreen(
@@ -135,7 +136,7 @@ private fun DealAndRatingCard(
                 text = buildString {
                     append("Counterpart rating: ")
                     if (uiState.data.counterpartRatingCount > 0) {
-                        append(String.format("%.1f", uiState.data.counterpartRatingAverage))
+                        append(uiState.data.counterpartRatingAverage.formatOneDecimal())
                         append(" (")
                         append(uiState.data.counterpartRatingCount)
                         append(")")
@@ -303,5 +304,16 @@ private fun RatingDialog(
                 )
             }
         }
+    }
+}
+
+
+private fun Double.formatOneDecimal(): String {
+    val rounded = round(this * 10.0) / 10.0
+    val whole = rounded.toLong()
+    return if (rounded == whole.toDouble()) {
+        "$whole.0"
+    } else {
+        rounded.toString()
     }
 }

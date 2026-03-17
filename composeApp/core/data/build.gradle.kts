@@ -23,7 +23,8 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.composeApp.core.domain)
             implementation(libs.koin.core)
-            implementation(libs.ktor.client.core)
+            api(libs.ktor.client.core)
+            api(libs.ktor.http)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.serialization.kotlinx.json)

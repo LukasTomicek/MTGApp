@@ -84,6 +84,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.savedstate.read
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -453,7 +454,11 @@ private fun HomeScreenWithBottomNav(
             composable(route = Route.SettingsProfile.value) {
                 val viewModel = koinInject<ProfileViewModel>()
                 val uiState by viewModel.state.collectAsState()
-                ProfileScreen(uiState = uiState, onUiEvent = viewModel::onUiEvent)
+                ProfileScreen(
+                    uiState = uiState,
+                    onUiEvent = viewModel::onUiEvent,
+                    onConfirmCreditsPurchase = viewModel::confirmCreditsPurchase,
+                )
             }
             composable(route = Route.SettingsPrivacyPolicy.value) {
                 PrivacyPolicyScreen()
@@ -517,7 +522,7 @@ private fun HomeScreenWithBottomNav(
             composable(route = ChatListDestination.chatRoutePattern) { backStackEntry ->
                 val viewModel = koinInject<MessageDetailViewModel>()
                 val uiState by viewModel.state.collectAsState()
-                val chatId = backStackEntry.arguments?.get("chatId")?.toString().orEmpty()
+                val chatId = backStackEntry.arguments?.read { getStringOrNull("chatId") }.orEmpty()
                 LaunchedEffect(viewModel) {
                     viewModel.direction.collect { direction ->
                         when (direction) {
@@ -539,7 +544,7 @@ private fun HomeScreenWithBottomNav(
             composable(route = PublicProfileDestination.routePattern) { backStackEntry ->
                 val viewModel = koinInject<PublicProfileViewModel>()
                 val uiState by viewModel.state.collectAsState()
-                val uid = backStackEntry.arguments?.get("uid")?.toString().orEmpty()
+                val uid = backStackEntry.arguments?.read { getStringOrNull("uid") }.orEmpty()
                 PublicProfileScreen(
                     uid = uid,
                     uiState = uiState,

@@ -3,6 +3,8 @@ package mtg.app.feature.settings.presentation.profile
 import mtg.app.core.presentation.BaseViewModel
 import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.chat.domain.ChatService
+import mtg.app.feature.settings.domain.SettingsService
+import mtg.app.feature.settings.domain.obj.ConfirmCreditsPurchaseRequest
 import mtg.app.feature.welcome.domain.WelcomeService
 import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
@@ -11,6 +13,7 @@ class ProfileViewModel(
     private val authService: AuthDomainService,
     private val welcomeService: WelcomeService,
     private val chatService: ChatService,
+    private val settingsService: SettingsService,
 ) : BaseViewModel<ProfileScreenState, ProfileUiEvent, ProfileDirection>(
     initialState = ProfileScreenState(),
 ) {
@@ -23,6 +26,15 @@ class ProfileViewModel(
 
     override fun onUiEvent(event: ProfileUiEvent) {
         when (event) {
+            is ProfileUiEvent.CreditsPurchaseFailed -> {
+                updateState {
+                    it.copy(
+                        creditsError = event.message,
+                        infoMessage = "",
+                    )
+                }
+            }
+
             ProfileUiEvent.ChangeNicknameClicked -> {
                 updateState {
                     it.copy(
@@ -91,6 +103,8 @@ class ProfileViewModel(
                     updateState {
                         it.copy(
                             nickname = "",
+                            credits = 0,
+                            creditsError = null,
                             nicknameDraftInput = "",
                             nicknameError = "Sign in required",
                             infoMessage = "",
@@ -104,7 +118,11 @@ class ProfileViewModel(
                 domainCall(
                     loading = null,
                     clearErrorOnStart = false,
-                    action = { welcomeService.loadNickname(uid = user.uid) },
+                    action = {
+                        settingsService.loadOwnProfile(
+                            context = AuthContext(uid = user.uid, idToken = user.idToken),
+                        )
+                    },
                     onError = { throwable ->
                         updateState {
                             it.copy(
@@ -113,10 +131,12 @@ class ProfileViewModel(
                             )
                         }
                     },
-                ) { nickname ->
+                ) { profile ->
                     updateState {
                         it.copy(
-                            nickname = nickname?.trim().orEmpty(),
+                            nickname = profile.nickname.trim(),
+                            credits = profile.credits,
+                            creditsError = null,
                             nicknameDraftInput = "",
                             nicknameError = null,
                             infoMessage = "",
@@ -201,6 +221,37 @@ class ProfileViewModel(
                         infoMessage = "Nickname updated",
                     )
                 }
+        }
+    }
+
+    suspend fun confirmCreditsPurchase(request: ConfirmCreditsPurchaseRequest) {
+        val uid = currentUid ?: error("Sign in required")
+        val idToken = currentIdToken ?: error("Sign in required")
+
+        setLoading(true)
+        updateState { it.copy(creditsError = null, infoMessage = "") }
+        try {
+            val credits = settingsService.confirmCreditsPurchase(
+                context = AuthContext(uid = uid, idToken = idToken),
+                request = request,
+            )
+            updateState {
+                it.copy(
+                    credits = credits,
+                    creditsError = null,
+                    infoMessage = "Credits updated",
+                )
+            }
+        } catch (throwable: Throwable) {
+            updateState {
+                it.copy(
+                    creditsError = throwable.message ?: "Failed to confirm purchase",
+                    infoMessage = "",
+                )
+            }
+            throw throwable
+        } finally {
+            setLoading(false)
         }
     }
 

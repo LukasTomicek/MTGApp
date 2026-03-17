@@ -21,9 +21,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.composeApp.core.domain)
             implementation(projects.composeApp.feature.settings.data)
             implementation(projects.composeApp.feature.settings.domain)
         }
     }
 }
-

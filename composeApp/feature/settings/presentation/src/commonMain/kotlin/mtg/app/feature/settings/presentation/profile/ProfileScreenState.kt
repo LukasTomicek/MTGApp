@@ -1,5 +1,7 @@
 package mtg.app.feature.settings.presentation.profile
 
+import mtg.app.feature.settings.domain.obj.CreditsProduct
+
 data class ProfileScreenState(
     // Static copy
     val title: String = "Profile",
@@ -7,9 +9,12 @@ data class ProfileScreenState(
 
     // Loaded profile
     val nickname: String = "",
+    val credits: Int = 0,
+    val creditProducts: List<CreditsProduct> = CreditsProduct.defaultPackages,
 
     // Validation + status
     val nicknameError: String? = null,
+    val creditsError: String? = null,
     val infoMessage: String = "",
     val reviewsError: String? = null,
 
