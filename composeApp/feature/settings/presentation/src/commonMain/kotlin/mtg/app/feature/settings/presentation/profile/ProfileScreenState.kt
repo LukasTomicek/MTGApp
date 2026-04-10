@@ -1,7 +1,5 @@
 package mtg.app.feature.settings.presentation.profile
 
-import mtg.app.feature.settings.domain.obj.CreditsProduct
-
 data class ProfileScreenState(
     // Static copy
     val title: String = "Profile",
@@ -9,17 +7,18 @@ data class ProfileScreenState(
 
     // Loaded profile
     val nickname: String = "",
-    val credits: Int = 0,
-    val creditProducts: List<CreditsProduct> = CreditsProduct.defaultPackages,
+    val balanceMinor: Long = 0L,
 
     // Validation + status
     val nicknameError: String? = null,
-    val creditsError: String? = null,
     val infoMessage: String = "",
     val reviewsError: String? = null,
+    val orderHistoryError: String? = null,
 
     // User reviews
     val reviews: List<ProfileReviewItem> = emptyList(),
+    val boughtOrders: List<ProfileOrderItem> = emptyList(),
+    val soldOrders: List<ProfileOrderItem> = emptyList(),
 
     // Change nickname modal
     val isChangeNicknameModalVisible: Boolean = false,
@@ -37,4 +36,11 @@ data class ProfileReviewItem(
     val score: Int,
     val comment: String,
     val createdAt: Long,
+)
+
+data class ProfileOrderItem(
+    val id: String,
+    val cardName: String,
+    val amountMinor: Long,
+    val paymentStatus: String,
 )

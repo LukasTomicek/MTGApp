@@ -26,6 +26,7 @@ import mtg.app.core.presentation.components.AppButtonState
 import mtg.app.core.presentation.components.AppButtonTypes
 import mtg.app.core.presentation.components.TextState
 import mtg.app.core.presentation.theme.AppTheme
+import mtg.app.core.presentation.utils.formatEuroPrice
 import mtg.app.feature.trade.domain.MarketPlaceSeller
 
 @Composable
@@ -33,6 +34,8 @@ fun ChooseSellerModal(
     selectedCardName: String,
     sellers: List<MarketPlaceSeller>,
     selectedSellerUid: String?,
+    dialogTitle: String = "Choose seller",
+    emptyText: String = "No sellers available for this card",
     onSellerSelected: (String) -> Unit,
     onDismiss: () -> Unit,
     onViewProfile: () -> Unit,
@@ -57,7 +60,7 @@ fun ChooseSellerModal(
             ) {
                 Text(
                     modifier = Modifier.padding(bottom = 8.dp),
-                    text = "Choose seller",
+                    text = dialogTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -70,7 +73,7 @@ fun ChooseSellerModal(
 
                 if (sortedSellers.isEmpty()) {
                     Text(
-                        text = "No sellers available for this card",
+                        text = emptyText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -104,7 +107,7 @@ fun ChooseSellerModal(
                                         style = MaterialTheme.typography.bodyMedium,
                                     )
                                     Text(
-                                        text = "${seller.offerCount} offers | ${seller.fromPrice?.let { "$$it" } ?: "-"}",
+                                        text = "${seller.offerCount} offers | ${formatEuroPrice(seller.fromPrice)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

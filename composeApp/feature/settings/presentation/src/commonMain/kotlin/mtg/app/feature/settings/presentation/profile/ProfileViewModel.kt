@@ -4,7 +4,6 @@ import mtg.app.core.presentation.BaseViewModel
 import mtg.app.feature.auth.domain.AuthDomainService
 import mtg.app.feature.chat.domain.ChatService
 import mtg.app.feature.settings.domain.SettingsService
-import mtg.app.feature.settings.domain.obj.ConfirmCreditsPurchaseRequest
 import mtg.app.feature.welcome.domain.WelcomeService
 import mtg.app.core.domain.obj.AuthContext
 import kotlinx.coroutines.flow.collect
@@ -26,15 +25,6 @@ class ProfileViewModel(
 
     override fun onUiEvent(event: ProfileUiEvent) {
         when (event) {
-            is ProfileUiEvent.CreditsPurchaseFailed -> {
-                updateState {
-                    it.copy(
-                        creditsError = event.message,
-                        infoMessage = "",
-                    )
-                }
-            }
-
             ProfileUiEvent.ChangeNicknameClicked -> {
                 updateState {
                     it.copy(
@@ -100,18 +90,20 @@ class ProfileViewModel(
                 currentIdToken = user?.idToken
 
                 if (user == null) {
-                    updateState {
-                        it.copy(
-                            nickname = "",
-                            credits = 0,
-                            creditsError = null,
-                            nicknameDraftInput = "",
-                            nicknameError = "Sign in required",
-                            infoMessage = "",
-                            reviews = emptyList(),
-                            reviewsError = null,
-                        )
-                    }
+                        updateState {
+                            it.copy(
+                                nickname = "",
+                                balanceMinor = 0L,
+                                nicknameDraftInput = "",
+                                nicknameError = "Sign in required",
+                                infoMessage = "",
+                                reviews = emptyList(),
+                                boughtOrders = emptyList(),
+                                soldOrders = emptyList(),
+                                reviewsError = null,
+                                orderHistoryError = null,
+                            )
+                        }
                     return@collect
                 }
 
@@ -135,12 +127,12 @@ class ProfileViewModel(
                     updateState {
                         it.copy(
                             nickname = profile.nickname.trim(),
-                            credits = profile.credits,
-                            creditsError = null,
+                            balanceMinor = profile.balanceMinor,
                             nicknameDraftInput = "",
                             nicknameError = null,
                             infoMessage = "",
                             reviewsError = null,
+                            orderHistoryError = null,
                         )
                     }
                 }
@@ -173,6 +165,47 @@ class ProfileViewModel(
                                 )
                             },
                             reviewsError = null,
+                        )
+                    }
+                }
+
+                domainCall(
+                    loading = null,
+                    clearErrorOnStart = false,
+                    action = {
+                        val context = AuthContext(uid = user.uid, idToken = user.idToken)
+                        chatService.loadBoughtOrders(context = context) to
+                            chatService.loadSoldOrders(context = context)
+                    },
+                    onError = { throwable ->
+                        updateState {
+                            it.copy(
+                                boughtOrders = emptyList(),
+                                soldOrders = emptyList(),
+                                orderHistoryError = throwable.message ?: "Failed to load order history",
+                            )
+                        }
+                    },
+                ) { (boughtOrders, soldOrders) ->
+                    updateState {
+                        it.copy(
+                            boughtOrders = boughtOrders.map { order ->
+                                ProfileOrderItem(
+                                    id = order.id,
+                                    cardName = order.cardName.ifBlank { order.cardId.ifBlank { order.id } },
+                                    amountMinor = order.amountMinor,
+                                    paymentStatus = order.paymentStatus.name,
+                                )
+                            },
+                            soldOrders = soldOrders.map { order ->
+                                ProfileOrderItem(
+                                    id = order.id,
+                                    cardName = order.cardName.ifBlank { order.cardId.ifBlank { order.id } },
+                                    amountMinor = order.amountMinor,
+                                    paymentStatus = order.paymentStatus.name,
+                                )
+                            },
+                            orderHistoryError = null,
                         )
                     }
                 }
@@ -221,37 +254,6 @@ class ProfileViewModel(
                         infoMessage = "Nickname updated",
                     )
                 }
-        }
-    }
-
-    suspend fun confirmCreditsPurchase(request: ConfirmCreditsPurchaseRequest) {
-        val uid = currentUid ?: error("Sign in required")
-        val idToken = currentIdToken ?: error("Sign in required")
-
-        setLoading(true)
-        updateState { it.copy(creditsError = null, infoMessage = "") }
-        try {
-            val credits = settingsService.confirmCreditsPurchase(
-                context = AuthContext(uid = uid, idToken = idToken),
-                request = request,
-            )
-            updateState {
-                it.copy(
-                    credits = credits,
-                    creditsError = null,
-                    infoMessage = "Credits updated",
-                )
-            }
-        } catch (throwable: Throwable) {
-            updateState {
-                it.copy(
-                    creditsError = throwable.message ?: "Failed to confirm purchase",
-                    infoMessage = "",
-                )
-            }
-            throw throwable
-        } finally {
-            setLoading(false)
         }
     }
 

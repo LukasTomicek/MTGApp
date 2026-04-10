@@ -5,6 +5,7 @@ import mtg.app.core.presentation.components.AppButtonState
 import mtg.app.core.presentation.components.AppButtonTypes
 import mtg.app.core.presentation.components.TextState
 import mtg.app.core.presentation.theme.AppTheme
+import mtg.app.core.presentation.utils.formatEuroPrice
 import mtg.app.feature.notifications.domain.NotificationItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -100,9 +101,7 @@ fun NotificationOffersModal(
                                         text = buildString {
                                             append(offer.message ?: "${offer.sellerEmail} has this card")
                                             append(" | Price: ")
-                                            append(
-                                                offer.price?.toDisplayPrice() ?: "-",
-                                            )
+                                            append(formatEuroPrice(offer.price))
                                         },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -148,13 +147,5 @@ fun NotificationOffersModal(
                 }
             }
         }
-    }
-}
-
-private fun Double.toDisplayPrice(): String {
-    return if (this % 1.0 == 0.0) {
-        this.toLong().toString()
-    } else {
-        this.toString()
     }
 }

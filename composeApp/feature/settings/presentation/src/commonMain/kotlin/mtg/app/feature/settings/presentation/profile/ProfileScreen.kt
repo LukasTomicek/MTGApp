@@ -5,6 +5,7 @@ import mtg.app.core.presentation.components.AppButtonState
 import mtg.app.core.presentation.components.AppValueEditModal
 import mtg.app.core.presentation.components.TextState
 import mtg.app.core.presentation.state.UiState
+import mtg.app.core.presentation.utils.formatEuroMinorAmount
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -26,17 +26,7 @@ import androidx.compose.ui.unit.dp
 fun ProfileScreen(
     uiState: UiState<ProfileScreenState>,
     onUiEvent: (ProfileUiEvent) -> Unit,
-    onConfirmCreditsPurchase: suspend (mtg.app.feature.settings.domain.obj.ConfirmCreditsPurchaseRequest) -> Unit = {},
 ) {
-    val creditsPurchaseRequester = rememberCreditsPurchaseRequester(
-        onPurchaseConfirmed = onConfirmCreditsPurchase,
-        onError = { onUiEvent(ProfileUiEvent.CreditsPurchaseFailed(it)) },
-    )
-
-    LaunchedEffect(creditsPurchaseRequester) {
-        creditsPurchaseRequester.recoverPendingPurchases()
-    }
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -55,42 +45,9 @@ fun ProfileScreen(
         item {
             Text(
                 modifier = Modifier.padding(top = 8.dp),
-                text = "Credits: ${uiState.data.credits}",
+                text = "Your balance: ${formatEuroMinorAmount(uiState.data.balanceMinor)}",
                 style = MaterialTheme.typography.bodyLarge,
             )
-        }
-
-        item {
-            Text(
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
-                text = "Buy credits",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
-        items(uiState.data.creditProducts, key = { it.productId }) { product ->
-            AppButton(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                state = AppButtonState(
-                    title = TextState(product.label),
-                    enabled = !uiState.isLoading,
-                    onClick = { creditsPurchaseRequester.launch(product) },
-                ),
-            )
-        }
-
-        uiState.data.creditsError?.takeIf { it.isNotBlank() }?.let { error ->
-            item {
-                Text(
-                    modifier = Modifier.padding(top = 4.dp),
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
         }
 
         uiState.data.nicknameError?.takeIf { it.isNotBlank() }?.let { error ->
@@ -139,6 +96,66 @@ fun ProfileScreen(
                     onClick = { onUiEvent(ProfileUiEvent.ChangePasswordClicked) },
                 ),
             )
+        }
+
+        item {
+            Text(
+                modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
+                text = "Bought orders",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        uiState.data.orderHistoryError?.takeIf { it.isNotBlank() }?.let { error ->
+            item {
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        if (uiState.data.boughtOrders.isEmpty()) {
+            item {
+                Text(
+                    text = "No bought orders yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else {
+            items(uiState.data.boughtOrders, key = { it.id }) { order ->
+                OrderCard(
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    order = order,
+                )
+            }
+        }
+
+        item {
+            Text(
+                modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
+                text = "Sold orders",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        if (uiState.data.soldOrders.isEmpty()) {
+            item {
+                Text(
+                    text = "No sold orders yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else {
+            items(uiState.data.soldOrders, key = { it.id }) { order ->
+                OrderCard(
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    order = order,
+                )
+            }
         }
 
         item {
@@ -232,5 +249,36 @@ fun ProfileScreen(
             errorMessage = uiState.data.passwordError,
             isSaving = uiState.isLoading,
         )
+    }
+}
+
+@Composable
+private fun OrderCard(
+    modifier: Modifier = Modifier,
+    order: ProfileOrderItem,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = order.cardName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = formatEuroMinorAmount(order.amountMinor),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "Payment: ${order.paymentStatus}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }

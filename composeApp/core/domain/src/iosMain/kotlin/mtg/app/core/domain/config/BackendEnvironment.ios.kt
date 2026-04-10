@@ -1,11 +1,10 @@
 package mtg.app.core.domain.config
 
 actual object BackendEnvironment {
-    // Update this before first production rollout.
-    private const val PROD_BASE_URL = "https://api.mtglocaltrade.com"
+    private const val PROD_BASE_URL = "https://mtgapp-backend.onrender.com"
     private const val DEV_BASE_URL = "http://192.168.1.13:8080"
 
-    actual val mode: BackendMode = BackendMode.DEV
+    actual val mode: BackendMode = BackendMode.PRODUCTION
 
     actual val primaryBaseUrl: String = when (mode) {
         BackendMode.DEV -> DEV_BASE_URL
@@ -24,4 +23,3 @@ actual object BackendEnvironment {
         return expectedHost.equals(host, ignoreCase = true) && expectedPort == port
     }
 }
-

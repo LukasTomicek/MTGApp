@@ -7,11 +7,14 @@ import mtg.app.feature.chat.data.MessagesDataSource
 import mtg.app.feature.chat.data.remote.dto.ChatMetaDto
 import mtg.app.feature.chat.data.remote.dto.ChatMessageDto
 import mtg.app.feature.chat.data.remote.dto.ChatNodeDto
+import mtg.app.feature.chat.data.remote.dto.ExternalLinkResponseDto
 import mtg.app.feature.chat.data.remote.dto.NicknameResponseDto
 import mtg.app.feature.chat.data.remote.dto.PatchChatDealRequestDto
 import mtg.app.feature.chat.data.remote.dto.RatingExistsResponseDto
 import mtg.app.feature.chat.data.remote.dto.SendMessageRequestDto
+import mtg.app.feature.chat.data.remote.dto.SellerPayoutStatusResponseDto
 import mtg.app.feature.chat.data.remote.dto.SubmitRatingRequestDto
+import mtg.app.feature.chat.data.remote.dto.TradeOrderResponseDto
 import mtg.app.feature.chat.data.remote.dto.UserMatchThreadDto
 import mtg.app.feature.chat.data.remote.dto.UserReviewDto
 import mtg.app.feature.chat.data.remote.dto.UserSellOfferDto
@@ -19,11 +22,14 @@ import mtg.app.feature.chat.data.remote.dto.buildTradeRatingKey
 import mtg.app.feature.chat.data.remote.dto.toChatMessages
 import mtg.app.feature.chat.data.remote.dto.toDomain
 import mtg.app.feature.chat.data.remote.dto.toMessageThreads
+import mtg.app.feature.chat.data.remote.dto.toDomain as payoutStatusToDomain
 import mtg.app.feature.chat.data.remote.dto.toUserReviews
 import mtg.app.feature.chat.data.remote.dto.toUserSellOffers
 import mtg.app.feature.chat.domain.ChatMessage
 import mtg.app.feature.chat.domain.ChatMeta
 import mtg.app.feature.chat.domain.MessageThread
+import mtg.app.feature.chat.domain.SellerPayoutStatus
+import mtg.app.feature.chat.domain.TradeOrderSummary
 import mtg.app.feature.chat.domain.UserRatingSummary
 import mtg.app.feature.chat.domain.UserReview
 import mtg.app.feature.chat.domain.UserSellOffer
@@ -120,6 +126,66 @@ class DefaultRemoteMessagesDataSource(
             path = "/v1/chats/${chatId}",
             idToken = context.idToken,
         )?.toDomain(fallbackChatId = chatId)
+    }
+
+    override suspend fun loadChatOrder(context: AuthContext, chatId: String): TradeOrderSummary? {
+        return apiCallHandler.apiRequestOrNull<TradeOrderResponseDto>(
+            path = "/v1/chats/${chatId}/order",
+            idToken = context.idToken,
+        )?.toDomain()
+    }
+
+    override suspend fun loadBoughtOrders(context: AuthContext): List<TradeOrderSummary> {
+        return apiCallHandler.apiRequest<List<TradeOrderResponseDto>>(
+            path = "/v1/payments/orders/bought",
+            idToken = context.idToken,
+        ).map { it.toDomain() }
+    }
+
+    override suspend fun loadSoldOrders(context: AuthContext): List<TradeOrderSummary> {
+        return apiCallHandler.apiRequest<List<TradeOrderResponseDto>>(
+            path = "/v1/payments/orders/sold",
+            idToken = context.idToken,
+        ).map { it.toDomain() }
+    }
+
+    override suspend fun ensureChatOrder(context: AuthContext, chatId: String): TradeOrderSummary {
+        return apiCallHandler.apiRequest<TradeOrderResponseDto>(
+            path = "/v1/chats/${chatId}/order",
+            method = HttpMethod.Post,
+            idToken = context.idToken,
+        ).toDomain()
+    }
+
+    override suspend fun loadSellerPayoutStatus(context: AuthContext): SellerPayoutStatus {
+        return apiCallHandler.apiRequest<SellerPayoutStatusResponseDto>(
+            path = "/v1/payments/connect/status",
+            idToken = context.idToken,
+        ).payoutStatusToDomain()
+    }
+
+    override suspend fun createSellerOnboardingLink(context: AuthContext): String {
+        return apiCallHandler.apiRequest<ExternalLinkResponseDto>(
+            path = "/v1/payments/connect/onboarding-link",
+            method = HttpMethod.Post,
+            idToken = context.idToken,
+        ).url
+    }
+
+    override suspend fun createCheckoutLink(context: AuthContext, chatId: String): String {
+        return apiCallHandler.apiRequest<ExternalLinkResponseDto>(
+            path = "/v1/chats/${chatId}/order/checkout",
+            method = HttpMethod.Post,
+            idToken = context.idToken,
+        ).url
+    }
+
+    override suspend fun refundOrder(context: AuthContext, orderId: String): TradeOrderSummary {
+        return apiCallHandler.apiRequest<TradeOrderResponseDto>(
+            path = "/v1/payments/orders/${orderId}/refund",
+            method = HttpMethod.Post,
+            idToken = context.idToken,
+        ).toDomain()
     }
 
     override suspend fun loadChatMessages(context: AuthContext, chatId: String): List<ChatMessage> {

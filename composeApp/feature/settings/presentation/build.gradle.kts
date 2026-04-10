@@ -34,9 +34,5 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.kotlinx.coroutines.core)
         }
-
-        androidMain.dependencies {
-            implementation(libs.billing.ktx)
-        }
     }
 }

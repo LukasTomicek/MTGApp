@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import mtg.app.core.presentation.components.CardImage
 import mtg.app.core.presentation.theme.AppTheme
+import mtg.app.core.presentation.utils.formatEuroPrice
 import mtg.app.feature.trade.domain.MarketPlaceCard
 
 @Composable
@@ -62,7 +63,7 @@ fun MarketCardColumn(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "$pricePrefix ${card.fromPrice?.let { "$$it" } ?: "-"}",
+                text = "$pricePrefix ${formatEuroPrice(card.fromPrice)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )

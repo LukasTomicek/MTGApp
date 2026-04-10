@@ -237,27 +237,32 @@ class MarketPlaceViewModel(
 
     private fun openOrCreateChatForSelectedSeller() {
         val idToken = currentIdToken ?: return
-        val buyerUid = currentUid ?: return
-        val buyerEmail = currentEmail?.trim().orEmpty().ifBlank { buyerUid }
+        val currentUid = currentUid ?: return
+        val currentEmail = currentEmail?.trim().orEmpty().ifBlank { currentUid }
         val stateData = state.value.data
         val selectedSellerUid = stateData.selectedSellerUid ?: return
-        val seller = stateData.sellersForSelectedCard.firstOrNull { it.uid == selectedSellerUid } ?: return
-        if (seller.uid == buyerUid) {
+        val counterpart = stateData.sellersForSelectedCard.firstOrNull { it.uid == selectedSellerUid } ?: return
+        if (counterpart.uid == currentUid) {
             setError("You can't message yourself")
             return
         }
         val cardId = stateData.selectedCardId.orEmpty().ifBlank { stateData.selectedCardName }
         val cardName = stateData.selectedCardName.ifBlank { "Unknown card" }
+        val isSellMode = stateData.displayMode == MarketPlaceDisplayMode.SELL
+        val buyerUid = if (isSellMode) currentUid else counterpart.uid
+        val buyerEmail = if (isSellMode) currentEmail else counterpart.displayName
+        val sellerUid = if (isSellMode) counterpart.uid else currentUid
+        val sellerEmail = if (isSellMode) counterpart.displayName else currentEmail
 
         domainCall(
             action = {
                 tradeService.ensureMarketPlaceChat(
-                    context = AuthContext(uid = buyerUid, idToken = idToken),
+                    context = AuthContext(uid = currentUid, idToken = idToken),
                     request = EnsureMarketPlaceChatRequest(
                         buyerUid = buyerUid,
                         buyerEmail = buyerEmail,
-                        sellerUid = seller.uid,
-                        sellerEmail = seller.displayName,
+                        sellerUid = sellerUid,
+                        sellerEmail = sellerEmail,
                         cardId = cardId,
                         cardName = cardName,
                     ),

@@ -39,8 +39,11 @@ class MessageDetailViewModel(
             is MessageDetailUiEvent.InputChanged -> updateState { it.copy(input = event.value) }
             MessageDetailUiEvent.SendClicked -> send()
             MessageDetailUiEvent.ReloadClicked -> reload()
-            MessageDetailUiEvent.ProposeDealClicked -> proposeDeal()
+            MessageDetailUiEvent.ProposeDealClicked -> payForDeal()
             MessageDetailUiEvent.ConfirmDealClicked -> confirmDeal()
+            MessageDetailUiEvent.PayForDealClicked -> payForDeal()
+            MessageDetailUiEvent.RefundPaymentClicked -> refundPayment()
+            MessageDetailUiEvent.SetupPayoutsClicked -> setupPayouts()
             MessageDetailUiEvent.RatingDismissed -> {
                 updateState { it.copy(isRatingModalVisible = false, ratingCommentDraft = "") }
                 navigate(MessageDetailDirection.CloseChat)
@@ -108,7 +111,24 @@ class MessageDetailViewModel(
                 } else {
                     false
                 }
-                ReloadSnapshot(meta, messages, summary, counterpartUid, alreadyRated)
+                val order = if (meta != null) {
+                    runCatching {
+                        chatService.loadChatOrder(
+                            context = authContext,
+                            chatId = chatId,
+                        )
+                    }.getOrNull()
+                } else {
+                    null
+                }
+                val payoutStatus = if (meta != null && currentUser == meta.sellerUid) {
+                    runCatching {
+                        chatService.loadSellerPayoutStatus(context = authContext)
+                    }.getOrDefault(mtg.app.feature.chat.domain.SellerPayoutStatus())
+                } else {
+                    mtg.app.feature.chat.domain.SellerPayoutStatus()
+                }
+                ReloadSnapshot(meta, messages, summary, counterpartUid, alreadyRated, order, payoutStatus)
             },
             onError = { throwable ->
                 setError(throwable.message ?: "Failed to load chat")
@@ -135,6 +155,8 @@ class MessageDetailViewModel(
                         sellerConfirmed = snapshot.meta?.sellerConfirmed ?: false,
                         buyerCompleted = snapshot.meta?.buyerCompleted ?: false,
                         sellerCompleted = snapshot.meta?.sellerCompleted ?: false,
+                        order = snapshot.order,
+                        sellerPayoutStatus = snapshot.payoutStatus,
                         counterpartRatingAverage = snapshot.summary?.average ?: 0.0,
                         counterpartRatingCount = snapshot.summary?.count ?: 0,
                         alreadyRatedByCurrentUser = snapshot.alreadyRated,
@@ -192,7 +214,7 @@ class MessageDetailViewModel(
         }
     }
 
-    private fun proposeDeal() {
+    private fun payForDeal() {
         val uid = currentUid ?: return
         val idToken = currentIdToken ?: return
         val chatId = state.value.data.chatId
@@ -202,16 +224,59 @@ class MessageDetailViewModel(
             loading = null,
             clearErrorOnStart = false,
             action = {
-                chatService.proposeDeal(
+                chatService.createCheckoutLink(
                     context = AuthContext(uid = uid, idToken = idToken),
                     chatId = chatId,
                 )
             },
             onError = { throwable ->
-                setError(throwable.message ?: "Failed to propose deal")
+                setError(throwable.message ?: "Failed to create checkout link")
+            },
+        ) { url ->
+            navigate(MessageDetailDirection.OpenExternalUrl(url))
+        }
+    }
+
+    private fun setupPayouts() {
+        val uid = currentUid ?: return
+        val idToken = currentIdToken ?: return
+
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
+                chatService.createSellerOnboardingLink(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                )
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to create payout onboarding link")
+            },
+        ) { url ->
+            navigate(MessageDetailDirection.OpenExternalUrl(url))
+        }
+    }
+
+    private fun refundPayment() {
+        val uid = currentUid ?: return
+        val idToken = currentIdToken ?: return
+        val orderId = state.value.data.order?.id.orEmpty()
+        if (orderId.isBlank()) return
+
+        domainCall(
+            loading = null,
+            clearErrorOnStart = false,
+            action = {
+                chatService.refundOrder(
+                    context = AuthContext(uid = uid, idToken = idToken),
+                    orderId = orderId,
+                )
+            },
+            onError = { throwable ->
+                setError(throwable.message ?: "Failed to refund payment")
             },
         ) {
-                reload()
+            reload()
         }
     }
 
@@ -305,4 +370,6 @@ private data class ReloadSnapshot(
     val summary: mtg.app.feature.chat.domain.UserRatingSummary?,
     val counterpartUid: String,
     val alreadyRated: Boolean,
+    val order: mtg.app.feature.chat.domain.TradeOrderSummary?,
+    val payoutStatus: mtg.app.feature.chat.domain.SellerPayoutStatus,
 )

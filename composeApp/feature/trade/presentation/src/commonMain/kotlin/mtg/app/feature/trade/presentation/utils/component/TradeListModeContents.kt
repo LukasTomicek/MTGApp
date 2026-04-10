@@ -30,6 +30,7 @@ import mtg.app.core.presentation.components.CardImage
 import mtg.app.core.presentation.components.TextInputRow
 import mtg.app.core.presentation.components.TextState
 import mtg.app.core.presentation.components.appOutlinedTextFieldColors
+import mtg.app.core.presentation.utils.formatEuroPrice
 import mtg.app.feature.trade.domain.MtgCard
 import mtg.app.feature.trade.presentation.utils.model.CardCondition
 import mtg.app.feature.trade.presentation.utils.model.CollectionArtOption
@@ -143,7 +144,7 @@ fun TradeListCollectionModeContent(
 
                 items(visibleEntries, key = { it.entryId }) { entry ->
                     val subtitle = "${entry.foil.label} | ${entry.language.label} | ${entry.condition.label} | ${entry.artLabel}"
-                    val price = if (showPriceInSubtitle) entry.price?.let { "$$it" } ?: "-" else null
+                    val price = if (showPriceInSubtitle) formatEuroPrice(entry.price) else null
 
                     CardCollectionRow(
                         title = "${entry.quantity}x ${entry.card.name}",

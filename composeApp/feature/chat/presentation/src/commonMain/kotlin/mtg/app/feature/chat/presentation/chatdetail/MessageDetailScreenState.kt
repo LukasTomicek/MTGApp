@@ -2,6 +2,8 @@ package mtg.app.feature.chat.presentation.chatdetail
 
 import mtg.app.feature.chat.domain.ChatMessage
 import mtg.app.feature.chat.domain.DealStatus
+import mtg.app.feature.chat.domain.SellerPayoutStatus
+import mtg.app.feature.chat.domain.TradeOrderSummary
 
 data class MessageDetailScreenState(
     // Chat context
@@ -18,6 +20,8 @@ data class MessageDetailScreenState(
     val sellerConfirmed: Boolean = false,
     val buyerCompleted: Boolean = false,
     val sellerCompleted: Boolean = false,
+    val order: TradeOrderSummary? = null,
+    val sellerPayoutStatus: SellerPayoutStatus = SellerPayoutStatus(),
     val counterpartRatingAverage: Double = 0.0,
     val counterpartRatingCount: Int = 0,
     val alreadyRatedByCurrentUser: Boolean = false,

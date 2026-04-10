@@ -25,6 +25,38 @@ class DefaultChatService(
         return repository.loadChatMeta(context = context, chatId = chatId)
     }
 
+    override suspend fun loadChatOrder(context: AuthContext, chatId: String): TradeOrderSummary? {
+        return repository.loadChatOrder(context = context, chatId = chatId)
+    }
+
+    override suspend fun loadBoughtOrders(context: AuthContext): List<TradeOrderSummary> {
+        return repository.loadBoughtOrders(context = context)
+    }
+
+    override suspend fun loadSoldOrders(context: AuthContext): List<TradeOrderSummary> {
+        return repository.loadSoldOrders(context = context)
+    }
+
+    override suspend fun ensureChatOrder(context: AuthContext, chatId: String): TradeOrderSummary {
+        return repository.ensureChatOrder(context = context, chatId = chatId)
+    }
+
+    override suspend fun loadSellerPayoutStatus(context: AuthContext): SellerPayoutStatus {
+        return repository.loadSellerPayoutStatus(context = context)
+    }
+
+    override suspend fun createSellerOnboardingLink(context: AuthContext): String {
+        return repository.createSellerOnboardingLink(context = context)
+    }
+
+    override suspend fun createCheckoutLink(context: AuthContext, chatId: String): String {
+        return repository.createCheckoutLink(context = context, chatId = chatId)
+    }
+
+    override suspend fun refundOrder(context: AuthContext, orderId: String): TradeOrderSummary {
+        return repository.refundOrder(context = context, orderId = orderId)
+    }
+
     override suspend fun loadChatMessages(context: AuthContext, chatId: String): List<ChatMessage> {
         return repository.loadChatMessages(context = context, chatId = chatId)
     }

@@ -1,7 +1,6 @@
 package mtg.app.feature.settings.domain
 
 import mtg.app.core.domain.obj.AuthContext
-import mtg.app.feature.settings.domain.obj.ConfirmCreditsPurchaseRequest
 import mtg.app.feature.settings.domain.obj.SettingsProfile
 
 class DefaultSettingsService(
@@ -9,15 +8,5 @@ class DefaultSettingsService(
 ) : SettingsService {
     override suspend fun loadOwnProfile(context: AuthContext): SettingsProfile {
         return repository.loadOwnProfile(context = context)
-    }
-
-    override suspend fun confirmCreditsPurchase(
-        context: AuthContext,
-        request: ConfirmCreditsPurchaseRequest,
-    ): Int {
-        return repository.confirmCreditsPurchase(
-            context = context,
-            request = request,
-        )
     }
 }

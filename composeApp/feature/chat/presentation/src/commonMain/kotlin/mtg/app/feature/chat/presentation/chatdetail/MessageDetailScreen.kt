@@ -7,7 +7,10 @@ import mtg.app.core.presentation.components.TextInputRow
 import mtg.app.core.presentation.components.TextState
 import mtg.app.core.presentation.state.UiState
 import mtg.app.core.presentation.theme.AppTheme
+import mtg.app.core.presentation.utils.formatEuroMinorAmount
 import mtg.app.feature.chat.domain.DealStatus
+import mtg.app.feature.chat.domain.TradePaymentStatus
+import mtg.app.feature.chat.domain.TradePayoutStatus
 import mtg.app.feature.chat.presentation.utils.ChatMessageRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -124,6 +127,7 @@ private fun DealAndRatingCard(
         ) {
             val buyerState = uiState.data.toParticipantDealState(isBuyer = true)
             val sellerState = uiState.data.toParticipantDealState(isBuyer = false)
+            val order = uiState.data.order
             Text(
                 text = "Deal: ${uiState.data.dealStatus.name}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -132,6 +136,16 @@ private fun DealAndRatingCard(
                 text = "Buyer: $buyerState | Seller: $sellerState",
                 style = MaterialTheme.typography.bodySmall,
             )
+            if (order != null) {
+                Text(
+                    text = "Price: ${formatEuroMinorAmount(order.amountMinor)}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Payment: ${order.paymentStatus.name} | Payout: ${order.payoutStatus.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             Text(
                 text = buildString {
                     append("Counterpart rating: ")
@@ -146,7 +160,6 @@ private fun DealAndRatingCard(
                 },
                 style = MaterialTheme.typography.bodySmall,
             )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -155,10 +168,22 @@ private fun DealAndRatingCard(
                     AppButton(
                         modifier = Modifier.weight(1f),
                         state = AppButtonState(
-                            title = TextState("Reserve deal"),
+                            title = TextState("Reserve and pay"),
                             buttonType = AppButtonTypes.Small,
                             enabled = uiState.data.dealStatus == DealStatus.OPEN,
                             onClick = { onUiEvent(MessageDetailUiEvent.ProposeDealClicked) },
+                        ),
+                    )
+                }
+
+                if (uiState.data.canCurrentUserRefundPayment()) {
+                    AppButton(
+                        modifier = Modifier.weight(1f),
+                        state = AppButtonState(
+                            title = TextState("Refund payment"),
+                            buttonType = AppButtonTypes.Small,
+                            enabled = true,
+                            onClick = { onUiEvent(MessageDetailUiEvent.RefundPaymentClicked) },
                         ),
                     )
                 }
@@ -204,13 +229,10 @@ private fun MessageDetailScreenState.toParticipantDealState(isBuyer: Boolean): S
 
 private fun MessageDetailScreenState.currentUserActionLabel(): String? {
     if (dealStatus != DealStatus.PROPOSED) return null
+    if (order?.paymentStatus != TradePaymentStatus.PAID) return null
 
     val isBuyer = currentUserUid == buyerUid
     val isSeller = currentUserUid == sellerUid
-
-    if (isSeller && buyerConfirmed && !sellerConfirmed) {
-        return "Confirm deal"
-    }
 
     if (buyerConfirmed && sellerConfirmed) {
         if (isBuyer && !buyerCompleted) return "Complete deal"
@@ -221,15 +243,24 @@ private fun MessageDetailScreenState.currentUserActionLabel(): String? {
 
 private fun MessageDetailScreenState.canCurrentUserPerformAction(): Boolean {
     if (dealStatus != DealStatus.PROPOSED) return false
+    if (order?.paymentStatus != TradePaymentStatus.PAID) return false
     val isBuyer = currentUserUid == buyerUid
     val isSeller = currentUserUid == sellerUid
 
-    if (isSeller && buyerConfirmed && !sellerConfirmed) return true
     if (buyerConfirmed && sellerConfirmed) {
         if (isBuyer && !buyerCompleted) return true
         if (isSeller && !sellerCompleted) return true
     }
     return false
+}
+
+private fun MessageDetailScreenState.canCurrentUserRefundPayment(): Boolean {
+    val orderState = order ?: return false
+    if (currentUserUid != buyerUid) return false
+    if (dealStatus == DealStatus.COMPLETED || dealStatus == DealStatus.CANCELED) return false
+    if (orderState.paymentStatus != TradePaymentStatus.PAID) return false
+    if (orderState.payoutStatus == TradePayoutStatus.PAID_OUT) return false
+    return true
 }
 
 @Composable

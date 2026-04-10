@@ -3,6 +3,8 @@ package mtg.app.feature.chat.data
 import mtg.app.feature.chat.domain.ChatMessage
 import mtg.app.feature.chat.domain.ChatMeta
 import mtg.app.feature.chat.domain.MessageThread
+import mtg.app.feature.chat.domain.SellerPayoutStatus
+import mtg.app.feature.chat.domain.TradeOrderSummary
 import mtg.app.feature.chat.domain.UserRatingSummary
 import mtg.app.feature.chat.domain.UserReview
 import mtg.app.feature.chat.domain.UserSellOffer
@@ -16,6 +18,14 @@ interface MessagesDataSource {
     suspend fun loadUserNickname(uid: String): String?
     suspend fun deleteThread(context: AuthContext, request: DeleteChatThreadRequest)
     suspend fun loadChatMeta(context: AuthContext, chatId: String): ChatMeta?
+    suspend fun loadChatOrder(context: AuthContext, chatId: String): TradeOrderSummary?
+    suspend fun loadBoughtOrders(context: AuthContext): List<TradeOrderSummary>
+    suspend fun loadSoldOrders(context: AuthContext): List<TradeOrderSummary>
+    suspend fun ensureChatOrder(context: AuthContext, chatId: String): TradeOrderSummary
+    suspend fun loadSellerPayoutStatus(context: AuthContext): SellerPayoutStatus
+    suspend fun createSellerOnboardingLink(context: AuthContext): String
+    suspend fun createCheckoutLink(context: AuthContext, chatId: String): String
+    suspend fun refundOrder(context: AuthContext, orderId: String): TradeOrderSummary
     suspend fun loadChatMessages(context: AuthContext, chatId: String): List<ChatMessage>
     suspend fun sendMessage(context: AuthContext, request: SendChatMessageRequest)
     suspend fun proposeDeal(context: AuthContext, chatId: String)

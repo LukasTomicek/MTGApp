@@ -120,17 +120,13 @@ fun MarketPlaceScreen(
                         ) { card ->
                             MarketCardRow(
                                 card = card,
-                                onClick = if (displayMode == MarketPlaceDisplayMode.SELL) {
-                                    {
-                                        onUiEvent(
-                                            MarketPlaceUiEvent.MarketCardClicked(
-                                                cardId = card.cardId,
-                                                cardName = card.cardName,
-                                            )
+                                onClick = {
+                                    onUiEvent(
+                                        MarketPlaceUiEvent.MarketCardClicked(
+                                            cardId = card.cardId,
+                                            cardName = card.cardName,
                                         )
-                                    }
-                                } else {
-                                    null
+                                    )
                                 },
                                 pricePrefix = pricePrefix,
                             )
@@ -161,17 +157,13 @@ fun MarketPlaceScreen(
             ) { _, card ->
                 MarketCardColumn(
                     card = card,
-                    onClick = if (displayMode == MarketPlaceDisplayMode.SELL) {
-                        {
-                            onUiEvent(
-                                MarketPlaceUiEvent.MarketCardClicked(
-                                    cardId = card.cardId,
-                                    cardName = card.cardName,
-                                )
+                    onClick = {
+                        onUiEvent(
+                            MarketPlaceUiEvent.MarketCardClicked(
+                                cardId = card.cardId,
+                                cardName = card.cardName,
                             )
-                        }
-                    } else {
-                        null
+                        )
                     },
                     pricePrefix = pricePrefix,
                 )
@@ -201,6 +193,12 @@ fun MarketPlaceScreen(
             selectedCardName = uiState.data.selectedCardName,
             sellers = uiState.data.sellersForSelectedCard,
             selectedSellerUid = uiState.data.selectedSellerUid,
+            dialogTitle = if (displayMode == MarketPlaceDisplayMode.SELL) "Choose seller" else "Choose buyer",
+            emptyText = if (displayMode == MarketPlaceDisplayMode.SELL) {
+                "No sellers available for this card"
+            } else {
+                "No buyers available for this card"
+            },
             onSellerSelected = { onUiEvent(MarketPlaceUiEvent.SellerSelected(it)) },
             onDismiss = { onUiEvent(MarketPlaceUiEvent.SellerDialogDismissed) },
             onViewProfile = { onUiEvent(MarketPlaceUiEvent.ViewSellerProfileClicked) },

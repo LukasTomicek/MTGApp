@@ -13,6 +13,7 @@ import mtg.app.feature.trade.presentation.utils.model.CollectionArtOption
 import mtg.app.feature.trade.presentation.utils.model.CollectionCardEntry
 import mtg.app.feature.trade.presentation.utils.model.FoilOption
 import mtg.app.feature.trade.presentation.utils.model.LanguageOption
+import mtg.app.core.presentation.utils.formatEuroPrice
 import mtg.app.feature.trade.presentation.utils.model.hasSameMergeIdentityAs
 import mtg.app.feature.trade.presentation.utils.model.mergeDuplicateEntries
 import mtg.app.feature.trade.presentation.utils.mapper.toCollectionCardEntry
@@ -738,8 +739,7 @@ private fun parsePriceOrNull(raw: String): Double? {
 }
 
 private fun formatPrice(value: Double?): String {
-    val number = value ?: return "-"
-    return "$${number}"
+    return formatEuroPrice(value)
 }
 
 private fun entriesSignature(entries: List<CollectionCardEntry>): String {

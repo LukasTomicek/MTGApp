@@ -82,6 +82,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.savedstate.read
@@ -97,6 +98,7 @@ import org.koin.compose.koinInject
 @Composable
 fun DefaultApplication() {
     val navController = rememberNavController()
+    val uriHandler = LocalUriHandler.current
 
     NavHost(
         navController = navController,
@@ -306,6 +308,7 @@ private fun HomeScreenWithBottomNav(
     onNavigateToOnboarding: () -> Unit,
 ) {
     val navController = rememberNavController()
+    val uriHandler = LocalUriHandler.current
     val notificationsBadgeViewModel = koinInject<NotificationsBadgeViewModel>()
     val notificationsBadgeState by notificationsBadgeViewModel.state.collectAsState()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -457,7 +460,6 @@ private fun HomeScreenWithBottomNav(
                 ProfileScreen(
                     uiState = uiState,
                     onUiEvent = viewModel::onUiEvent,
-                    onConfirmCreditsPurchase = viewModel::confirmCreditsPurchase,
                 )
             }
             composable(route = Route.SettingsPrivacyPolicy.value) {
@@ -528,6 +530,10 @@ private fun HomeScreenWithBottomNav(
                         when (direction) {
                             MessageDetailDirection.CloseChat -> {
                                 navController.popBackStack()
+                            }
+
+                            is MessageDetailDirection.OpenExternalUrl -> {
+                                uriHandler.openUri(direction.url)
                             }
 
                             MessageDetailDirection.None -> Unit

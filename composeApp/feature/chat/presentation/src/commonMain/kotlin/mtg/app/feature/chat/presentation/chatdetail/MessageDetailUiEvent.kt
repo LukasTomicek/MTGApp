@@ -10,6 +10,9 @@ sealed interface MessageDetailUiEvent : Event {
     data object ReloadClicked : MessageDetailUiEvent
     data object ProposeDealClicked : MessageDetailUiEvent
     data object ConfirmDealClicked : MessageDetailUiEvent
+    data object PayForDealClicked : MessageDetailUiEvent
+    data object RefundPaymentClicked : MessageDetailUiEvent
+    data object SetupPayoutsClicked : MessageDetailUiEvent
     data object RatingDismissed : MessageDetailUiEvent
     data class RatingScoreChanged(val value: Int) : MessageDetailUiEvent
     data class RatingCommentChanged(val value: String) : MessageDetailUiEvent

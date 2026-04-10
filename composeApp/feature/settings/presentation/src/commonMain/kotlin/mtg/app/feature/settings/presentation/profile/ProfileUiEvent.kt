@@ -3,7 +3,6 @@ package mtg.app.feature.settings.presentation.profile
 import mtg.app.core.presentation.Event
 
 sealed interface ProfileUiEvent : Event {
-    data class CreditsPurchaseFailed(val message: String) : ProfileUiEvent
     data object ChangeNicknameClicked : ProfileUiEvent
     data object ChangeNicknameDismissed : ProfileUiEvent
     data class NicknameDraftChanged(val value: String) : ProfileUiEvent

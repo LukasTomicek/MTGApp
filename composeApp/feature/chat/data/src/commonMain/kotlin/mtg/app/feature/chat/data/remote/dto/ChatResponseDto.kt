@@ -6,6 +6,10 @@ import mtg.app.feature.chat.domain.ChatMessage
 import mtg.app.feature.chat.domain.ChatMeta
 import mtg.app.feature.chat.domain.DealStatus
 import mtg.app.feature.chat.domain.MessageThread
+import mtg.app.feature.chat.domain.SellerPayoutStatus
+import mtg.app.feature.chat.domain.TradeOrderSummary
+import mtg.app.feature.chat.domain.TradePaymentStatus
+import mtg.app.feature.chat.domain.TradePayoutStatus
 import mtg.app.feature.chat.domain.UserReview
 import mtg.app.feature.chat.domain.UserSellOffer
 import mtg.app.feature.chat.domain.obj.DeleteChatThreadRequest
@@ -93,6 +97,60 @@ data class ChatMessageDto(
 )
 
 @Serializable
+data class TradeOrderResponseDto(
+    @SerialName("id")
+    val id: String = "",
+    @SerialName("chatId")
+    val chatId: String = "",
+    @SerialName("cardId")
+    val cardId: String = "",
+    @SerialName("cardName")
+    val cardName: String = "",
+    @SerialName("buyerUserId")
+    val buyerUserId: String = "",
+    @SerialName("sellerUserId")
+    val sellerUserId: String = "",
+    @SerialName("amountMinor")
+    val amountMinor: Long = 0L,
+    @SerialName("currency")
+    val currency: String = "",
+    @SerialName("platformFeeMinor")
+    val platformFeeMinor: Long = 0L,
+    @SerialName("sellerAmountMinor")
+    val sellerAmountMinor: Long = 0L,
+    @SerialName("paymentStatus")
+    val paymentStatus: String = "PENDING",
+    @SerialName("payoutStatus")
+    val payoutStatus: String = "NOT_READY",
+    @SerialName("paidAt")
+    val paidAt: Long? = null,
+    @SerialName("paidOutAt")
+    val paidOutAt: Long? = null,
+    @SerialName("createdAt")
+    val createdAt: Long = 0L,
+    @SerialName("updatedAt")
+    val updatedAt: Long = 0L,
+)
+
+@Serializable
+data class SellerPayoutStatusResponseDto(
+    @SerialName("accountId")
+    val accountId: String? = null,
+    @SerialName("detailsSubmitted")
+    val detailsSubmitted: Boolean = false,
+    @SerialName("chargesEnabled")
+    val chargesEnabled: Boolean = false,
+    @SerialName("payoutsEnabled")
+    val payoutsEnabled: Boolean = false,
+)
+
+@Serializable
+data class ExternalLinkResponseDto(
+    @SerialName("url")
+    val url: String = "",
+)
+
+@Serializable
 data class RatingExistsResponseDto(
     @SerialName("exists")
     val exists: Boolean = false,
@@ -164,6 +222,36 @@ internal fun ChatMetaDto.toDomain(fallbackChatId: String): ChatMeta {
     )
 }
 
+internal fun TradeOrderResponseDto.toDomain(): TradeOrderSummary {
+    return TradeOrderSummary(
+        id = id,
+        chatId = chatId,
+        cardId = cardId,
+        cardName = cardName,
+        buyerUserId = buyerUserId,
+        sellerUserId = sellerUserId,
+        amountMinor = amountMinor,
+        currency = currency,
+        platformFeeMinor = platformFeeMinor,
+        sellerAmountMinor = sellerAmountMinor,
+        paymentStatus = paymentStatus.toTradePaymentStatus(),
+        payoutStatus = payoutStatus.toTradePayoutStatus(),
+        paidAt = paidAt,
+        paidOutAt = paidOutAt,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+}
+
+internal fun SellerPayoutStatusResponseDto.toDomain(): SellerPayoutStatus {
+    return SellerPayoutStatus(
+        accountId = accountId?.trim()?.takeUnless { it.isBlank() },
+        detailsSubmitted = detailsSubmitted,
+        chargesEnabled = chargesEnabled,
+        payoutsEnabled = payoutsEnabled,
+    )
+}
+
 internal fun Map<String, ChatMessageDto>.toChatMessages(): List<ChatMessage> {
     return entries.mapNotNull { (messageId, dto) ->
         val text = dto.text?.trim().takeUnless { it.isNullOrBlank() } ?: return@mapNotNull null
@@ -227,5 +315,22 @@ private fun String?.toDealStatus(): DealStatus {
         "COMPLETED" -> DealStatus.COMPLETED
         "CANCELED" -> DealStatus.CANCELED
         else -> DealStatus.OPEN
+    }
+}
+
+private fun String?.toTradePaymentStatus(): TradePaymentStatus {
+    return when (this?.trim()?.uppercase()) {
+        "PAID" -> TradePaymentStatus.PAID
+        "FAILED" -> TradePaymentStatus.FAILED
+        "REFUNDED" -> TradePaymentStatus.REFUNDED
+        else -> TradePaymentStatus.PENDING
+    }
+}
+
+private fun String?.toTradePayoutStatus(): TradePayoutStatus {
+    return when (this?.trim()?.uppercase()) {
+        "PAID_OUT" -> TradePayoutStatus.PAID_OUT
+        "FAILED" -> TradePayoutStatus.FAILED
+        else -> TradePayoutStatus.NOT_READY
     }
 }

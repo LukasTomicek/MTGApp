@@ -20,8 +20,17 @@ class DefaultAuthRepository(
     init {
         scope.launch {
             runCatching { dataSource.restoreCurrentUser() }
-                .onSuccess { restored -> sessionStore.updateUser(restored) }
-                .onFailure { sessionStore.updateUser(null) }
+                .onSuccess { restored ->
+                    val current = sessionStore.currentUser.value
+                    if (restored != null || current == null) {
+                        sessionStore.updateUser(restored)
+                    }
+                }
+                .onFailure {
+                    if (sessionStore.currentUser.value == null) {
+                        sessionStore.updateUser(null)
+                    }
+                }
             sessionStore.markInitialized()
         }
     }
